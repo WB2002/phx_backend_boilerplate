@@ -82,6 +82,26 @@ config :phx_backend_boilerplate, PhxBackendBoilerplate.HTTP, receive_timeout: 15
 config :phx_backend_boilerplate, PhxBackendBoilerplate.Integrations.Example,
   base_url: "https://api.example.com"
 
+# Multilevel cache topology (Nebulex validates these options strictly).
+config :phx_backend_boilerplate, PhxBackendBoilerplate.Cache,
+  inclusion_policy: :inclusive,
+  levels: [
+    {PhxBackendBoilerplate.Cache.L1,
+     [
+       gc_interval: :timer.hours(12),
+       max_size: 100_000
+     ]},
+    {PhxBackendBoilerplate.Cache.L2, []}
+  ]
+
+# SWR defaults: soft_ttl < l1_hard_ttl < l2_hard_ttl. L2 conn_opts in runtime.exs.
+config :phx_backend_boilerplate, PhxBackendBoilerplate.SWR,
+  soft_ttl: :timer.seconds(30),
+  l1_hard_ttl: :timer.minutes(2),
+  l2_hard_ttl: :timer.minutes(5),
+  lock_ttl: 8_000,
+  early_refresh_window: 5_000
+
 # Import environment specific config. This must remain at the bottom
 # of this file so it overrides the configuration defined above.
 import_config "#{config_env()}.exs"

@@ -111,12 +111,54 @@ defmodule PhxBackendBoilerplateWeb.Telemetry do
         description: "Calls rejected because circuit breaker is open"
       ),
 
+      # SWR cache metrics
+      summary("phx_backend_boilerplate.swr.fetch.stop.duration",
+        tags: [:freshness],
+        tag_values: &swr_fetch_tags/1,
+        unit: {:native, :millisecond},
+        description: "SWR fetch duration by freshness"
+      ),
+      counter("phx_backend_boilerplate.swr.fetch.stop.freshness",
+        event_name: [:phx_backend_boilerplate, :swr, :fetch, :stop],
+        tags: [:freshness],
+        tag_values: &swr_fetch_tags/1,
+        description: "SWR fetch outcomes by freshness"
+      ),
+      counter("phx_backend_boilerplate.swr.lock.stop.result",
+        event_name: [:phx_backend_boilerplate, :swr, :lock, :stop],
+        tags: [:result],
+        description: "Stampede lock acquired vs contended"
+      ),
+      counter("phx_backend_boilerplate.swr.refresh.stop.result",
+        event_name: [:phx_backend_boilerplate, :swr, :refresh, :stop],
+        tags: [:result],
+        tag_values: &swr_refresh_tags/1,
+        description: "Background SWR refresh outcomes"
+      ),
+      counter("phx_backend_boilerplate.swr.refresh.exception.count",
+        event_name: [:phx_backend_boilerplate, :swr, :refresh, :exception],
+        description: "Background SWR refresh exceptions"
+      ),
+      summary("phx_backend_boilerplate.cache.command.stop.duration",
+        tags: [:command],
+        unit: {:native, :millisecond},
+        description: "Nebulex multilevel cache command duration"
+      ),
+
       # VM Metrics
       summary("vm.memory.total", unit: {:byte, :kilobyte}),
       summary("vm.total_run_queue_lengths.total"),
       summary("vm.total_run_queue_lengths.cpu"),
       summary("vm.total_run_queue_lengths.io")
     ]
+  end
+
+  defp swr_fetch_tags(metadata) do
+    %{freshness: Map.get(metadata, :freshness, :unknown)}
+  end
+
+  defp swr_refresh_tags(metadata) do
+    %{result: Map.get(metadata, :result, :unknown)}
   end
 
   defp periodic_measurements do

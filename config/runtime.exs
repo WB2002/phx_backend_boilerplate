@@ -41,6 +41,9 @@ redis_url =
 
 config :phx_backend_boilerplate, PhxBackendBoilerplate.RateLimit, url: redis_url
 
+# Nebulex L2 (Redis). Same REDIS_URL as Hammer; Hammer uses its own key prefix.
+config :phx_backend_boilerplate, PhxBackendBoilerplate.Cache.L2, conn_opts: [url: redis_url]
+
 if config_env() == :prod do
   database_url =
     System.get_env("DATABASE_URL") ||

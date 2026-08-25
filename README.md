@@ -178,6 +178,42 @@ curl -i "http://localhost:4000/api/demo/expensive?hold_ms=5000"
 
 Expect two `200` responses and one `503` with `{"errors":{"detail":"Service Unavailable"}}`.
 
+### SWR cache (Nebulex + coalescing + stampede protection)
+
+`PhxBackendBoilerplate.SWR.fetch/3` wraps expensive loaders with:
+
+* **Multilevel cache** — L1 local ETS + L2 Redis (same `REDIS_URL` as Hammer)
+* **Soft / hard TTLs** — after soft TTL, serve stale immediately and refresh in the background (SWR); Nebulex hard TTL evicts the key
+* **Per-node coalescing** — concurrent misses on one VM share one loader
+* **Cluster stampede locks** — Redis `put_new` on `swr:lock:<key>`; losers poll L2 (no lock retry)
+* **Split hard TTLs** — writes are `L2.put` then `L1.put` with `l1_hard_ttl < l2_hard_ttl` so other nodes miss L1 sooner and see refreshed L2 (per-node eventual consistency; no PubSub invalidation in v1)
+
+```elixir
+config :phx_backend_boilerplate, PhxBackendBoilerplate.SWR,
+  soft_ttl: :timer.seconds(30),
+  l1_hard_ttl: :timer.minutes(2),
+  l2_hard_ttl: :timer.minutes(5),
+  lock_ttl: 8_000,
+  early_refresh_window: 5_000
+```
+
+Keys must be strings. Cache only serializable values (maps/lists/primitives), not Ecto graphs. Opt in at call sites — integrations are not auto-wrapped.
+
+`GET /api/demo/cached` — rate-limited; optional `key` and `work_ms` (capped at **2000**). Demo TTLs: soft 2s, L1 hard 5s, L2 hard 15s.
+
+```bash
+# Cold miss — one shared origin sleep under parallel load
+curl -s "http://localhost:4000/api/demo/cached?key=widget&work_ms=500" &
+curl -s "http://localhost:4000/api/demo/cached?key=widget&work_ms=500" &
+wait
+
+# After soft TTL (~2s), responses stay fast with "freshness":"stale"
+sleep 3
+curl -s "http://localhost:4000/api/demo/cached?key=widget&work_ms=500"
+```
+
+LiveDashboard metrics include SWR fetch freshness, lock contended, refresh errors, and Nebulex command duration.
+
 ## Learn more
 
 * Official website: https://www.phoenixframework.org/
@@ -186,3 +222,4 @@ Expect two `200` responses and one `503` with `{"errors":{"detail":"Service Unav
 * Forum: https://elixirforum.com/c/phoenix-forum
 * Source: https://github.com/phoenixframework/phoenix
 * Regulator: https://hexdocs.pm/regulator
+* Nebulex: https://hexdocs.pm/nebulex

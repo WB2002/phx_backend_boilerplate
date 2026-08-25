@@ -70,7 +70,11 @@ defmodule PhxBackendBoilerplate.MixProject do
       {:dns_cluster, "~> 0.2.0"},
       {:bandit, "~> 1.5"},
       {:hammer_backend_redis, "~> 7.0"},
-      {:regulator, "~> 0.6"}
+      {:regulator, "~> 0.6"},
+      {:nebulex, "~> 3.0"},
+      {:nebulex_local, "~> 3.0"},
+      {:nebulex_redis_adapter, "~> 3.0"},
+      {:nebulex_distributed, "~> 3.0"}
     ]
   end
 

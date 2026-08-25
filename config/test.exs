@@ -49,3 +49,18 @@ config :phx_backend_boilerplate, PhxBackendBoilerplate.HTTP, receive_timeout: 1_
 config :phx_backend_boilerplate, PhxBackendBoilerplate.Integrations.Example,
   base_url: "https://example.test",
   api_token: "test-token"
+
+# Short SWR defaults for tests (still soft < l1 < l2).
+config :phx_backend_boilerplate, PhxBackendBoilerplate.Cache,
+  inclusion_policy: :inclusive,
+  levels: [
+    {PhxBackendBoilerplate.Cache.L1, [gc_interval: :timer.hours(12), max_size: 10_000]},
+    {PhxBackendBoilerplate.Cache.L2, []}
+  ]
+
+config :phx_backend_boilerplate, PhxBackendBoilerplate.SWR,
+  soft_ttl: 200,
+  l1_hard_ttl: 1_000,
+  l2_hard_ttl: 5_000,
+  lock_ttl: 2_000,
+  early_refresh_window: 100

@@ -16,6 +16,9 @@ defmodule PhxBackendBoilerplate.Application do
       {PhxBackendBoilerplate.RateLimit,
        Application.fetch_env!(:phx_backend_boilerplate, PhxBackendBoilerplate.RateLimit)},
       PhxBackendBoilerplate.LoadShed,
+      {PhxBackendBoilerplate.Cache, []},
+      PhxBackendBoilerplate.Cache.Coalescer,
+      {Task.Supervisor, name: PhxBackendBoilerplate.Cache.TaskSupervisor},
       {Finch, name: PhxBackendBoilerplate.Finch},
       PhxBackendBoilerplate.Integrations.Example,
       # Start to serve requests, typically the last entry
