@@ -68,7 +68,8 @@ defmodule PhxBackendBoilerplate.MixProject do
       {:jason, "~> 1.2"},
       {:dns_cluster, "~> 0.2.0"},
       {:bandit, "~> 1.5"},
-      {:hammer_backend_redis, "~> 7.0"}
+      {:hammer_backend_redis, "~> 7.0"},
+      {:regulator, "~> 0.6"}
     ]
   end
 

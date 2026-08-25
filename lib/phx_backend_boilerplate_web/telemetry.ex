@@ -75,6 +75,23 @@ defmodule PhxBackendBoilerplateWeb.Telemetry do
           "The time the connection spent waiting before being checked out for the query"
       ),
 
+      # Regulator (load shedding) metrics
+      summary("regulator.ask.stop.duration",
+        tags: [:regulator, :result],
+        unit: {:native, :millisecond},
+        description: "Time from ask until token check-in or drop"
+      ),
+      counter("regulator.ask.stop.result",
+        event_name: [:regulator, :ask, :stop],
+        tags: [:regulator, :result],
+        description: "Regulator ask outcomes (ok, dropped, error, ignore)"
+      ),
+      last_value("regulator.limit.limit",
+        event_name: [:regulator, :limit],
+        tags: [:regulator],
+        description: "Current adaptive concurrency limit"
+      ),
+
       # VM Metrics
       summary("vm.memory.total", unit: {:byte, :kilobyte}),
       summary("vm.total_run_queue_lengths.total"),

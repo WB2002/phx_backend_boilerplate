@@ -36,3 +36,9 @@ config :phoenix, :plug_init_mode, :runtime
 # Sort query params output of verified routes for robust url comparisons
 config :phoenix,
   sort_verified_routes_query_params: true
+
+# Same Static(2) demo limiter as config.exs; plug tests install unique names.
+config :phx_backend_boilerplate, PhxBackendBoilerplate.LoadShed,
+  regulators: [
+    demo_expensive: {Regulator.Limit.Static, [limit: 2]}
+  ]

@@ -15,6 +15,7 @@ defmodule PhxBackendBoilerplate.Application do
       {Phoenix.PubSub, name: PhxBackendBoilerplate.PubSub},
       {PhxBackendBoilerplate.RateLimit,
        Application.fetch_env!(:phx_backend_boilerplate, PhxBackendBoilerplate.RateLimit)},
+      PhxBackendBoilerplate.LoadShed,
       # Start to serve requests, typically the last entry
       PhxBackendBoilerplateWeb.Endpoint
     ]

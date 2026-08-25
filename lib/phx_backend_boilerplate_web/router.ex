@@ -27,6 +27,18 @@ defmodule PhxBackendBoilerplateWeb.Router do
       by: [:ip, :guest_id, :fingerprint]
   end
 
+  pipeline :rate_limit_demo_expensive do
+    plug PhxBackendBoilerplateWeb.Plugs.RateLimit,
+      id: "demo_expensive",
+      scale: :timer.minutes(1),
+      limit: 60,
+      by: [:ip]
+  end
+
+  pipeline :load_shed_demo_expensive do
+    plug PhxBackendBoilerplateWeb.Plugs.LoadShed, regulator: :demo_expensive
+  end
+
   scope "/api", PhxBackendBoilerplateWeb do
     scope "/demo" do
       pipe_through :api
@@ -40,6 +52,12 @@ defmodule PhxBackendBoilerplateWeb.Router do
       pipe_through :rate_limit_demo_public
 
       get "/public", Demo.PublicController, :show
+    end
+
+    scope "/demo" do
+      pipe_through [:api, :rate_limit_demo_expensive, :load_shed_demo_expensive]
+
+      get "/expensive", Demo.ExpensiveController, :show
     end
   end
 

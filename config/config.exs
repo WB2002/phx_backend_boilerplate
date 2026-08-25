@@ -61,6 +61,15 @@ config :logger, :default_formatter,
 # Use Jason for JSON parsing in Phoenix
 config :phoenix, :json_library, Jason
 
+# Named Regulator concurrency limiters (capacity / load shedding).
+# Demo uses a small Static limit so parallel requests can trigger 503.
+# For production resource classes prefer AIMD/Gradient with a realistic
+# target_avg_latency (or :timeout) for that workload.
+config :phx_backend_boilerplate, PhxBackendBoilerplate.LoadShed,
+  regulators: [
+    demo_expensive: {Regulator.Limit.Static, [limit: 2]}
+  ]
+
 # Import environment specific config. This must remain at the bottom
 # of this file so it overrides the configuration defined above.
 import_config "#{config_env()}.exs"
