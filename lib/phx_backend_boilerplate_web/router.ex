@@ -3,11 +3,13 @@ defmodule PhxBackendBoilerplateWeb.Router do
 
   pipeline :api do
     plug :accepts, ["json"]
+    plug PhxBackendBoilerplateWeb.Plugs.Deadline
   end
 
   # Public APIs only — mints/persists guest_id via cookie + X-Guest-Id
   pipeline :api_public do
     plug :accepts, ["json"]
+    plug PhxBackendBoilerplateWeb.Plugs.Deadline
     plug PhxBackendBoilerplateWeb.Plugs.EnsureGuestId
   end
 

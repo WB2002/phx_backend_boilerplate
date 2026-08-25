@@ -10,12 +10,15 @@ Now you can visit [`localhost:4000`](http://localhost:4000) from your browser.
 
 Ready to run in production? Please [check our deployment guides](https://phoenix.hexdocs.pm/deployment.html).
 
-## Rate limiting and load shedding
+## Rate limiting, load shedding, and deadlines
 
-This boilerplate uses two complementary gates:
+This boilerplate uses three complementary controls:
 
 ```
 REQUEST
+   │
+   ▼
+Deadline ── "How much time does this work have left?" ──► 504 Gateway Timeout
    │
    ▼
 Hammer (RateLimit) ── "Is this client allowed?" ──► 429 Too Many Requests
@@ -29,10 +32,48 @@ Controller / expensive work
 
 | Gate | Library | Question | Typical HTTP |
 | --- | --- | --- | --- |
+| Time budget | `PhxBackendBoilerplate.Deadline` | Remaining request budget | `504` |
 | Fairness | [Hammer](https://hexdocs.pm/hammer) + Redis | Occurrences over time per client attribute | `429` |
 | Capacity | [Regulator](https://hexdocs.pm/regulator) | Concurrent in-flight work for a named resource | `503` |
 
-Hammer can still allow traffic when many distinct clients are each under their quota. Regulator sheds excess **concurrency** so your app (DB pool, CPU, downstream APIs) stays within capacity.
+Hammer can still allow traffic when many distinct clients are each under their quota. Regulator sheds excess **concurrency** so your app (DB pool, CPU, downstream APIs) stays within capacity. Deadline bounds how long any allowed work may run.
+
+### Request deadlines
+
+At the Phoenix edge (`PhxBackendBoilerplateWeb.Plugs.Deadline` on `:api` / `:api_public`), each request gets a local **monotonic** deadline. Default budget is `15_000` ms:
+
+```elixir
+config :phx_backend_boilerplate, PhxBackendBoilerplate.Deadline, timeout: 15_000
+```
+
+Override per pipeline: `plug PhxBackendBoilerplateWeb.Plugs.Deadline, timeout: 2_000`.
+
+**HTTP propagation** uses remaining budget, not wall-clock time:
+
+* Outbound: `PhxBackendBoilerplate.HTTP` adds `x-request-timeout-ms: <remaining>`
+* Inbound: the plug parses that header, caps with the local timeout, and installs a new monotonic deadline
+* Malformed headers are ignored (full local budget). Valid `0` means the budget is already exhausted → **504**
+* Network transit time is not subtracted; a few milliseconds of inflation in flight is accepted
+
+**Process propagation:** the process dictionary is **not** inherited by spawned processes. Capture the deadline in the parent and wrap the **child** body:
+
+```elixir
+deadline = PhxBackendBoilerplate.Deadline.current()
+
+Task.async(fn ->
+  PhxBackendBoilerplate.Deadline.with(deadline, fn ->
+    do_work()
+  end)
+end)
+```
+
+Or use `PhxBackendBoilerplate.Deadline.async/1`, which does that for you. The same pattern applies to `Task.Supervisor`.
+
+Outbound HTTP through `PhxBackendBoilerplate.HTTP` automatically caps `receive_timeout` and maps deadline-limited timeouts to `{:error, :deadline_exceeded}`. When remaining equals the configured timeout, that counts as deadline exhaustion (not a dependency failure).
+
+**Circuit breaker:** dependency failures (transport errors, 5xx, 408, 429) melt the breaker and may retry. Caller-imposed `{:error, :deadline_exceeded}` and typical 4xx do **not**. Classification in `Integrations.through_req/1` handles `:deadline_exceeded` **before** generic transport retry. Integration clients should use `Integrations.sleep_respecting_deadline/1` as ExternalService `:sleep_function` so backoff cannot outlive the budget.
+
+**Ecto (known limitation):** this pass does **not** auto-wire Repo timeouts. A query can run past the deadline, hold a pool checkout, and yield a discarded result — under load that can exhaust the pool. On deadline-sensitive paths, pass `timeout: Deadline.remaining()` (or skip the query if `Deadline.expired?()`) until a follow-up wires this automatically.
 
 ### Rate limiting (Hammer)
 

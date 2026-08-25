@@ -2,11 +2,17 @@ defmodule PhxBackendBoilerplate.HTTP do
   @moduledoc """
   Shared Req HTTP transport for outbound API calls.
 
+  Automatically respects `PhxBackendBoilerplate.Deadline` when set: caps
+  `receive_timeout`, attaches `x-request-timeout-ms`, and maps deadline-limited
+  transport timeouts to `{:error, :deadline_exceeded}`.
+
   Resilience (retry, circuit breaker) belongs in per-dependency
   `ExternalService` clients under `PhxBackendBoilerplate.Integrations`.
   This module always disables Req's built-in retry so those policies are
   not stacked.
   """
+
+  alias PhxBackendBoilerplate.Deadline
 
   @finch PhxBackendBoilerplate.Finch
   @default_receive_timeout 15_000
@@ -15,28 +21,40 @@ defmodule PhxBackendBoilerplate.HTTP do
   Builds a `Req.Request` with shared defaults, app config, and `opts`.
 
   Merge order: built-in defaults → `config :phx_backend_boilerplate, __MODULE__` →
-  `opts`. Then `retry: false` is forced.
+  `opts`. Then `retry: false` is forced. Deadline headers and timeout capping
+  are applied in `request/1`.
   """
   def new(opts \\ []) do
-    defaults = [
-      finch: @finch,
-      receive_timeout: @default_receive_timeout
-    ]
-
-    app_opts = Application.get_env(:phx_backend_boilerplate, __MODULE__, [])
-
-    defaults
-    |> Keyword.merge(app_opts)
-    |> Keyword.merge(opts)
+    opts
+    |> merge_opts()
     |> Keyword.put(:retry, false)
     |> Req.new()
   end
 
   @doc """
-  Performs an HTTP request. Returns `{:ok, response}` or `{:error, exception}`.
+  Performs an HTTP request. Returns `{:ok, response}`, `{:error, exception}`,
+  or `{:error, :deadline_exceeded}`.
   """
   def request(opts) when is_list(opts) do
-    opts |> new() |> Req.request()
+    remaining_before = Deadline.remaining()
+
+    if remaining_before == 0 do
+      {:error, :deadline_exceeded}
+    else
+      merged = merge_opts(opts)
+      config_timeout = Keyword.fetch!(merged, :receive_timeout)
+
+      merged =
+        merged
+        |> maybe_put_deadline_headers()
+        |> maybe_cap_receive_timeout(remaining_before)
+        |> Keyword.put(:retry, false)
+
+      merged
+      |> Req.new()
+      |> Req.request()
+      |> classify_timeout(remaining_before, config_timeout)
+    end
   end
 
   def get(url, opts \\ []) do
@@ -58,4 +76,60 @@ defmodule PhxBackendBoilerplate.HTTP do
   def delete(url, opts \\ []) do
     request(Keyword.merge(opts, method: :delete, url: url))
   end
+
+  defp merge_opts(opts) do
+    defaults = [
+      finch: @finch,
+      receive_timeout: @default_receive_timeout
+    ]
+
+    app_opts = Application.get_env(:phx_backend_boilerplate, __MODULE__, [])
+
+    defaults
+    |> Keyword.merge(app_opts)
+    |> Keyword.merge(opts)
+  end
+
+  defp maybe_put_deadline_headers(opts) do
+    case Deadline.propagation_headers() do
+      [] ->
+        opts
+
+      deadline_headers ->
+        existing = Keyword.get(opts, :headers, [])
+        Keyword.put(opts, :headers, merge_headers(existing, deadline_headers))
+    end
+  end
+
+  defp merge_headers(existing, deadline_headers) when is_list(existing) do
+    existing ++ deadline_headers
+  end
+
+  defp merge_headers(existing, deadline_headers) when is_map(existing) do
+    Enum.reduce(deadline_headers, existing, fn {k, v}, acc ->
+      Map.put(acc, k, v)
+    end)
+  end
+
+  defp maybe_cap_receive_timeout(opts, nil), do: opts
+
+  defp maybe_cap_receive_timeout(opts, remaining) when is_integer(remaining) do
+    config_timeout = Keyword.fetch!(opts, :receive_timeout)
+    Keyword.put(opts, :receive_timeout, min(config_timeout, remaining))
+  end
+
+  defp classify_timeout(
+         {:error, %Req.TransportError{reason: :timeout}} = error,
+         remaining_before,
+         config_timeout
+       )
+       when is_integer(remaining_before) do
+    if remaining_before <= config_timeout do
+      {:error, :deadline_exceeded}
+    else
+      error
+    end
+  end
+
+  defp classify_timeout(result, _remaining_before, _config_timeout), do: result
 end

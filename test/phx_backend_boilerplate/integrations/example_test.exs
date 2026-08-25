@@ -62,4 +62,33 @@ defmodule PhxBackendBoilerplate.Integrations.ExampleTest do
                end)
              end)
   end
+
+  test "503 then deadline_exceeded does not melt breaker for deadline" do
+    PhxBackendBoilerplate.Deadline.start(100)
+
+    Req.Test.stub(@stub, fn conn ->
+      Plug.Conn.send_resp(conn, 503, "unavailable")
+    end)
+
+    # tolerate >= 2 so one 503 does not open the breaker before the deadline path
+    assert {:error, :deadline_exceeded} =
+             Example.call(
+               [
+                 max_attempts: 5,
+                 base: 500,
+                 cap: 5_000,
+                 jitter: false
+               ],
+               fn ->
+                 PhxBackendBoilerplate.Integrations.through_req(fn ->
+                   PhxBackendBoilerplate.HTTP.get("/widgets/1",
+                     base_url: "https://example.test",
+                     plug: {Req.Test, @stub}
+                   )
+                 end)
+               end
+             )
+
+    refute Example.blown?()
+  end
 end

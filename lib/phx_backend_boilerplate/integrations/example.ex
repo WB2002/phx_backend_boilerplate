@@ -26,7 +26,8 @@ defmodule PhxBackendBoilerplate.Integrations.Example do
       base: 100,
       jitter: true,
       cap: 5_000
-    ]
+    ],
+    sleep_function: &PhxBackendBoilerplate.Integrations.sleep_respecting_deadline/1
 
   alias PhxBackendBoilerplate.HTTP
   alias PhxBackendBoilerplate.Integrations
@@ -39,6 +40,7 @@ defmodule PhxBackendBoilerplate.Integrations.Example do
   * `{:ok, %Req.Response{}}`
   * `{:error, %ExternalService.CircuitBreakerOpen{}}`
   * `{:error, %ExternalService.RetriesExhausted{}}`
+  * `{:error, :deadline_exceeded}`
   * `{:error, {:http, status, response}}`
   """
   def get_widget(id) do

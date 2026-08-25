@@ -70,6 +70,9 @@ config :phx_backend_boilerplate, PhxBackendBoilerplate.LoadShed,
     demo_expensive: {Regulator.Limit.Static, [limit: 2]}
   ]
 
+# Request deadline budget (monotonic). Propagated as x-request-timeout-ms.
+config :phx_backend_boilerplate, PhxBackendBoilerplate.Deadline, timeout: 15_000
+
 # Shared outbound HTTP transport (Req). Retry is always forced off in code;
 # ExternalService owns retry/circuit-breaker policy per integration client.
 config :phx_backend_boilerplate, PhxBackendBoilerplate.HTTP, receive_timeout: 15_000
