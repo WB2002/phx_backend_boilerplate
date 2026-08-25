@@ -5,8 +5,42 @@ defmodule PhxBackendBoilerplateWeb.Router do
     plug :accepts, ["json"]
   end
 
+  # Public APIs only — mints/persists guest_id via cookie + X-Guest-Id
+  pipeline :api_public do
+    plug :accepts, ["json"]
+    plug PhxBackendBoilerplateWeb.Plugs.EnsureGuestId
+  end
+
+  pipeline :rate_limit_demo_login do
+    plug PhxBackendBoilerplateWeb.Plugs.RateLimit,
+      id: "demo_login",
+      scale: :timer.minutes(1),
+      limit: 5,
+      by: [:ip]
+  end
+
+  pipeline :rate_limit_demo_public do
+    plug PhxBackendBoilerplateWeb.Plugs.RateLimit,
+      id: "demo_public",
+      scale: :timer.minutes(1),
+      limit: 5,
+      by: [:ip, :guest_id, :fingerprint]
+  end
+
   scope "/api", PhxBackendBoilerplateWeb do
-    pipe_through :api
+    scope "/demo" do
+      pipe_through :api
+      pipe_through :rate_limit_demo_login
+
+      post "/login", Demo.SessionController, :create
+    end
+
+    scope "/demo" do
+      pipe_through :api_public
+      pipe_through :rate_limit_demo_public
+
+      get "/public", Demo.PublicController, :show
+    end
   end
 
   # Enable LiveDashboard and Swoosh mailbox preview in development

@@ -2,7 +2,9 @@ defmodule PhxBackendBoilerplateWeb.ErrorJSONTest do
   use PhxBackendBoilerplateWeb.ConnCase, async: true
 
   test "renders 404" do
-    assert PhxBackendBoilerplateWeb.ErrorJSON.render("404.json", %{}) == %{errors: %{detail: "Not Found"}}
+    assert PhxBackendBoilerplateWeb.ErrorJSON.render("404.json", %{}) == %{
+             errors: %{detail: "Not Found"}
+           }
   end
 
   test "renders 500" do

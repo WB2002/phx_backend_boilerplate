@@ -1,0 +1,124 @@
+defmodule PhxBackendBoilerplateWeb.Plugs.RateLimitTest do
+  use PhxBackendBoilerplateWeb.ConnCase, async: false
+
+  alias PhxBackendBoilerplateWeb.Plugs.RateLimit
+
+  test "allows requests under the limit and denies when exceeded" do
+    id = "plug_test_#{:erlang.unique_integer([:positive])}"
+    opts = RateLimit.init(id: id, scale: :timer.minutes(1), limit: 2)
+    ip = unique_ip()
+
+    conn1 = call_with_ip(ip, opts)
+    refute conn1.halted
+    assert conn1.status == nil
+
+    conn2 = call_with_ip(ip, opts)
+    refute conn2.halted
+
+    conn3 = call_with_ip(ip, opts)
+    assert conn3.halted
+    assert conn3.status == 429
+    assert get_resp_header(conn3, "retry-after") != []
+    assert Jason.decode!(conn3.resp_body) == %{"errors" => %{"detail" => "Too Many Requests"}}
+  end
+
+  test "isolates limits by remote IP" do
+    id = "plug_ip_#{:erlang.unique_integer([:positive])}"
+    opts = RateLimit.init(id: id, scale: :timer.minutes(1), limit: 1)
+
+    conn_a = call_with_ip(unique_ip(), opts)
+    refute conn_a.halted
+
+    conn_b = call_with_ip(unique_ip(), opts)
+    refute conn_b.halted
+  end
+
+  test "uses independent buckets per attribute" do
+    id = "plug_multi_#{:erlang.unique_integer([:positive])}"
+    opts = RateLimit.init(id: id, scale: :timer.minutes(1), limit: 1, by: [:ip, :user_id])
+    ip = unique_ip()
+
+    conn1 =
+      build_conn()
+      |> Map.put(:remote_ip, ip)
+      |> put_req_header("x-user-id", "user-a")
+      |> RateLimit.call(opts)
+
+    refute conn1.halted
+
+    # Same IP, different user — IP bucket is already exhausted, so deny
+    conn2 =
+      build_conn()
+      |> Map.put(:remote_ip, ip)
+      |> put_req_header("x-user-id", "user-b")
+      |> RateLimit.call(opts)
+
+    assert conn2.halted
+    assert conn2.status == 429
+  end
+
+  test "does not share user_id buckets across different users on different IPs" do
+    id = "plug_user_#{:erlang.unique_integer([:positive])}"
+    opts = RateLimit.init(id: id, scale: :timer.minutes(1), limit: 1, by: [:user_id])
+
+    conn_a =
+      build_conn()
+      |> Map.put(:remote_ip, unique_ip())
+      |> put_req_header("x-user-id", "user-#{:erlang.unique_integer([:positive])}")
+      |> RateLimit.call(opts)
+
+    conn_b =
+      build_conn()
+      |> Map.put(:remote_ip, unique_ip())
+      |> put_req_header("x-user-id", "user-#{:erlang.unique_integer([:positive])}")
+      |> RateLimit.call(opts)
+
+    refute conn_a.halted
+    refute conn_b.halted
+  end
+
+  test "skips missing optional attributes" do
+    id = "plug_skip_#{:erlang.unique_integer([:positive])}"
+
+    opts =
+      RateLimit.init(id: id, scale: :timer.minutes(1), limit: 1, by: [:user_id, :fingerprint])
+
+    conn =
+      build_conn()
+      |> Map.put(:remote_ip, unique_ip())
+      |> RateLimit.call(opts)
+
+    refute conn.halted
+  end
+
+  test "denies when fingerprint bucket is exceeded" do
+    id = "plug_fp_#{:erlang.unique_integer([:positive])}"
+    opts = RateLimit.init(id: id, scale: :timer.minutes(1), limit: 1, by: [:fingerprint])
+    fingerprint = "fp-#{:erlang.unique_integer([:positive])}"
+
+    conn1 =
+      build_conn()
+      |> put_req_header("x-device-fingerprint", fingerprint)
+      |> RateLimit.call(opts)
+
+    conn2 =
+      build_conn()
+      |> put_req_header("x-device-fingerprint", fingerprint)
+      |> RateLimit.call(opts)
+
+    refute conn1.halted
+    assert conn2.halted
+    assert conn2.status == 429
+  end
+
+  defp call_with_ip(ip, opts) do
+    build_conn()
+    |> Map.put(:remote_ip, ip)
+    |> RateLimit.call(opts)
+  end
+
+  defp unique_ip do
+    n = :erlang.unique_integer([:positive])
+    {127, 0, rem(div(n, 256), 256), rem(n, 256)}
+  end
+end

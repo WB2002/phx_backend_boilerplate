@@ -67,7 +67,8 @@ defmodule PhxBackendBoilerplate.MixProject do
       {:gettext, "~> 1.0"},
       {:jason, "~> 1.2"},
       {:dns_cluster, "~> 0.2.0"},
-      {:bandit, "~> 1.5"}
+      {:bandit, "~> 1.5"},
+      {:hammer_backend_redis, "~> 7.0"}
     ]
   end
 
@@ -84,7 +85,11 @@ defmodule PhxBackendBoilerplate.MixProject do
       "ecto.reset": ["ecto.drop", "ecto.setup"],
       test: ["ecto.create --quiet", "ecto.migrate --quiet", "test"],
       "assets.setup": ["tailwind.install --if-missing", "esbuild.install --if-missing"],
-      "assets.build": ["compile", "tailwind phx_backend_boilerplate", "esbuild phx_backend_boilerplate"],
+      "assets.build": [
+        "compile",
+        "tailwind phx_backend_boilerplate",
+        "esbuild phx_backend_boilerplate"
+      ],
       "assets.deploy": [
         "tailwind phx_backend_boilerplate --minify",
         "esbuild phx_backend_boilerplate --minify",

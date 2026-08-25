@@ -10,10 +10,11 @@ defmodule PhxBackendBoilerplate.Application do
     children = [
       PhxBackendBoilerplateWeb.Telemetry,
       PhxBackendBoilerplate.Repo,
-      {DNSCluster, query: Application.get_env(:phx_backend_boilerplate, :dns_cluster_query) || :ignore},
+      {DNSCluster,
+       query: Application.get_env(:phx_backend_boilerplate, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: PhxBackendBoilerplate.PubSub},
-      # Start a worker by calling: PhxBackendBoilerplate.Worker.start_link(arg)
-      # {PhxBackendBoilerplate.Worker, arg},
+      {PhxBackendBoilerplate.RateLimit,
+       Application.fetch_env!(:phx_backend_boilerplate, PhxBackendBoilerplate.RateLimit)},
       # Start to serve requests, typically the last entry
       PhxBackendBoilerplateWeb.Endpoint
     ]

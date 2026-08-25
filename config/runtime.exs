@@ -23,6 +23,24 @@ end
 config :phx_backend_boilerplate, PhxBackendBoilerplateWeb.Endpoint,
   http: [port: String.to_integer(System.get_env("PORT", "4000"))]
 
+redis_url =
+  case config_env() do
+    :prod ->
+      System.get_env("REDIS_URL") ||
+        raise """
+        environment variable REDIS_URL is missing.
+        For example: redis://localhost:6379
+        """
+
+    :test ->
+      System.get_env("REDIS_URL") || "redis://localhost:6379/1"
+
+    _ ->
+      System.get_env("REDIS_URL") || "redis://localhost:6379"
+  end
+
+config :phx_backend_boilerplate, PhxBackendBoilerplate.RateLimit, url: redis_url
+
 if config_env() == :prod do
   database_url =
     System.get_env("DATABASE_URL") ||

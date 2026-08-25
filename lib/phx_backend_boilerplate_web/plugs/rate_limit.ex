@@ -1,0 +1,153 @@
+defmodule PhxBackendBoilerplateWeb.Plugs.RateLimit do
+  @moduledoc """
+  Rate-limits requests using independent Hammer buckets per attribute.
+
+  Options:
+
+    * `:id` — string bucket id, e.g. `"demo_login"` (required)
+    * `:scale` — window length in milliseconds (required)
+    * `:limit` — max hits allowed in the window (required)
+    * `:by` — list of attributes to check independently (default `[:ip]`)
+
+  Allowed `:by` atoms: `:ip`, `:user_id`, `:fingerprint`, `:guest_id`.
+
+  Each configured attribute gets its own Redis key shaped like
+  `{id}:{attr}:{value}`. The request is denied if **any**
+  bucket exceeds the limit. Missing optional attributes are skipped
+  (`:user_id`, `:fingerprint`). `:guest_id` is read from
+  `conn.assigns.guest_id`, then `x-guest-id`, then the `guest_id` cookie
+  (run `EnsureGuestId` on public pipelines to mint when absent).
+
+  On deny, responds with `429`, a `Retry-After` header (seconds), and JSON:
+
+      %{"errors" => %{"detail" => "Too Many Requests"}}
+
+  Example:
+
+      plug PhxBackendBoilerplateWeb.Plugs.RateLimit,
+        id: "demo_public",
+        scale: :timer.minutes(1),
+        limit: 5,
+        by: [:ip, :guest_id, :fingerprint]
+  """
+
+  import Plug.Conn
+
+  @behaviour Plug
+
+  @allowed_by [:ip, :user_id, :fingerprint, :guest_id]
+
+  @impl true
+  def init(opts) do
+    id = Keyword.fetch!(opts, :id)
+    scale = Keyword.fetch!(opts, :scale)
+    limit = Keyword.fetch!(opts, :limit)
+    by = Keyword.get(opts, :by, [:ip])
+
+    unless is_binary(id), do: raise(ArgumentError, ":id must be a string")
+
+    unless is_integer(scale) and scale > 0,
+      do: raise(ArgumentError, ":scale must be a positive integer")
+
+    unless is_integer(limit) and limit > 0,
+      do: raise(ArgumentError, ":limit must be a positive integer")
+
+    unless is_list(by) and by != [] and Enum.all?(by, &(&1 in @allowed_by)),
+      do: raise(ArgumentError, ":by must be a non-empty list of #{inspect(@allowed_by)}")
+
+    %{id: id, scale: scale, limit: limit, by: by}
+  end
+
+  @impl true
+  def call(conn, %{id: id, scale: scale, limit: limit, by: by}) do
+    conn = fetch_cookies(conn)
+
+    by
+    |> Enum.reduce_while({:allow, conn}, fn attr, {:allow, acc} ->
+      case resolve_value(acc, attr) do
+        nil ->
+          {:cont, {:allow, acc}}
+
+        value ->
+          key = "#{id}:#{attr}:#{value}"
+
+          case PhxBackendBoilerplate.RateLimit.hit(key, scale, limit) do
+            {:allow, _count} -> {:cont, {:allow, acc}}
+            {:deny, retry_after_ms} -> {:halt, {:deny, acc, retry_after_ms}}
+          end
+      end
+    end)
+    |> case do
+      {:allow, conn} ->
+        conn
+
+      {:deny, conn, retry_after_ms} ->
+        deny(conn, retry_after_ms)
+    end
+  end
+
+  defp resolve_value(conn, :ip), do: client_ip(conn)
+
+  defp resolve_value(conn, :user_id) do
+    conn |> get_req_header("x-user-id") |> List.first() |> present_or_nil()
+  end
+
+  defp resolve_value(conn, :fingerprint) do
+    conn |> get_req_header("x-device-fingerprint") |> List.first() |> present_or_nil()
+  end
+
+  defp resolve_value(conn, :guest_id) do
+    assign_id = Map.get(conn.assigns, :guest_id)
+    header_id = conn |> get_req_header("x-guest-id") |> List.first()
+    cookie_id = conn.cookies["guest_id"]
+
+    cond do
+      present?(assign_id) -> assign_id
+      present?(header_id) -> header_id
+      present?(cookie_id) -> cookie_id
+      true -> nil
+    end
+  end
+
+  defp client_ip(conn) do
+    forwarded =
+      conn
+      |> get_req_header("x-forwarded-for")
+      |> List.first()
+      |> present_or_nil()
+
+    cond do
+      forwarded ->
+        forwarded
+        |> String.split(",", trim: true)
+        |> List.first()
+        |> String.trim()
+
+      is_tuple(conn.remote_ip) ->
+        conn.remote_ip |> :inet.ntoa() |> to_string()
+
+      true ->
+        "unknown"
+    end
+  end
+
+  defp deny(conn, retry_after_ms) do
+    retry_after_seconds = max(div(retry_after_ms, 1000), 1)
+
+    conn
+    |> put_resp_header("retry-after", Integer.to_string(retry_after_seconds))
+    |> put_resp_content_type("application/json")
+    |> send_resp(429, Jason.encode!(%{errors: %{detail: "Too Many Requests"}}))
+    |> halt()
+  end
+
+  defp present_or_nil(value) when is_binary(value) do
+    trimmed = String.trim(value)
+    if trimmed == "", do: nil, else: trimmed
+  end
+
+  defp present_or_nil(_), do: nil
+
+  defp present?(value) when is_binary(value), do: String.trim(value) != ""
+  defp present?(_), do: false
+end
