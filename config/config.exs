@@ -70,6 +70,15 @@ config :phx_backend_boilerplate, PhxBackendBoilerplate.LoadShed,
     demo_expensive: {Regulator.Limit.Static, [limit: 2]}
   ]
 
+# Shared outbound HTTP transport (Req). Retry is always forced off in code;
+# ExternalService owns retry/circuit-breaker policy per integration client.
+config :phx_backend_boilerplate, PhxBackendBoilerplate.HTTP, receive_timeout: 15_000
+
+# Example integration — copy for real dependencies. base_url is required
+# by get_widget/1; override in runtime/test as needed.
+config :phx_backend_boilerplate, PhxBackendBoilerplate.Integrations.Example,
+  base_url: "https://api.example.com"
+
 # Import environment specific config. This must remain at the bottom
 # of this file so it overrides the configuration defined above.
 import_config "#{config_env()}.exs"

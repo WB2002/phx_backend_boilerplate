@@ -42,3 +42,10 @@ config :phx_backend_boilerplate, PhxBackendBoilerplate.LoadShed,
   regulators: [
     demo_expensive: {Regulator.Limit.Static, [limit: 2]}
   ]
+
+# Fast timeouts for outbound HTTP tests; plug stubs avoid the network.
+config :phx_backend_boilerplate, PhxBackendBoilerplate.HTTP, receive_timeout: 1_000
+
+config :phx_backend_boilerplate, PhxBackendBoilerplate.Integrations.Example,
+  base_url: "https://example.test",
+  api_token: "test-token"

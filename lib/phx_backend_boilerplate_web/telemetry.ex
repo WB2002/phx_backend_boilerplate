@@ -92,6 +92,25 @@ defmodule PhxBackendBoilerplateWeb.Telemetry do
         description: "Current adaptive concurrency limit"
       ),
 
+      # ExternalService (outbound resilience) metrics
+      summary("external_service.call.stop.duration",
+        tags: [:service],
+        unit: {:native, :millisecond},
+        description: "Guarded outbound call duration"
+      ),
+      counter("external_service.call.retry.count",
+        event_name: [:external_service, :call, :retry],
+        measurement: :count,
+        tags: [:service],
+        description: "Outbound call retries (melts circuit breaker)"
+      ),
+      counter("external_service.circuit_breaker.blown.count",
+        event_name: [:external_service, :circuit_breaker, :blown],
+        measurement: :count,
+        tags: [:service],
+        description: "Calls rejected because circuit breaker is open"
+      ),
+
       # VM Metrics
       summary("vm.memory.total", unit: {:byte, :kilobyte}),
       summary("vm.total_run_queue_lengths.total"),
