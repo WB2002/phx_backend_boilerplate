@@ -83,4 +83,51 @@ defmodule PhxBackendBoilerplate.ObservabilityTest do
                false
            end)
   end
+
+  test "cloudwatch log handler redacts PII and secrets in reports" do
+    Application.put_env(:phx_backend_boilerplate, Observability,
+      cloudwatch_logs_enabled: true,
+      cloudwatch_metrics_enabled: false,
+      otel_traces_enabled: false,
+      cloudwatch_logs: [
+        log_group: "/test/group",
+        log_stream: "test-stream",
+        flush_interval_ms: 50,
+        max_batch: 10,
+        level: :warning
+      ],
+      cloudwatch_metrics: []
+    )
+
+    assert :ok = Observability.attach_cloudwatch_logs!()
+
+    :logger.warning(%{
+      password: "secret123",
+      email: "user@example.com",
+      user_id: "demo-user",
+      request_id: "req-redact"
+    })
+
+    Process.sleep(150)
+    _ = :sys.get_state(CloudWatchLogHandler)
+
+    messages =
+      Fake.calls()
+      |> Enum.flat_map(fn
+        {:put_log_events, "/test/group", "test-stream", events, _} ->
+          Enum.map(events, & &1["message"])
+
+        _ ->
+          []
+      end)
+
+    assert messages != []
+
+    Enum.each(messages, fn message ->
+      refute message =~ "secret123"
+      refute message =~ "user@example.com"
+      assert message =~ "[REDACTED]"
+      assert message =~ "demo-user"
+    end)
+  end
 end

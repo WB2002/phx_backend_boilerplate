@@ -467,6 +467,16 @@ Production-shaped signals:
 
 On ECS/Fargate you can keep JSON logs on stdout (agent → CloudWatch) and leave `CLOUDWATCH_LOGS_ENABLED` off to avoid duplicate log groups. Point `OTEL_EXPORTER_OTLP_ENDPOINT` at an ADOT sidecar; the collector’s `awsxray` exporter sends to X-Ray.
 
+### Log field redaction (PII + secrets)
+
+Sensitive field names live in [`config/redaction_keys.exs`](config/redaction_keys.exs) as two lists — **redacted** (secrets) and **pii** (personal data). Their union is applied to:
+
+* Phoenix request params (`:filter_parameters` → `"[FILTERED]"`; **substring** match on param names)
+* Prod JSON stdout (`LoggerJSON.Redactors.RedactKeys` → `"[REDACTED]"`; **exact** key match)
+* CloudWatch Logs handler reports/metadata (same exact-key redaction)
+
+`user_id`, `request_id`, and `correlation_id` stay unredacted for tracing. Free-text messages are **not** scanned (`Logger.info("email=#{email}")` still leaks) — prefer keyed metadata or maps. Extend the lists in `redaction_keys.exs` when you add new sensitive fields.
+
 ### IAM (application / task role)
 
 * `logs:CreateLogGroup`, `logs:CreateLogStream`, `logs:PutLogEvents`, `logs:DescribeLogStreams`

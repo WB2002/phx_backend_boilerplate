@@ -29,6 +29,10 @@ config :swoosh, local: false
 # Do not print debug messages in production
 config :logger, level: :info
 
+# Same lists as config.exs (cannot call Logging.Redaction at Mix config time).
+%{redacted: redacted, pii: pii} =
+  Path.join(__DIR__, "redaction_keys.exs") |> Code.eval_file() |> elem(0)
+
 config :logger, :default_handler,
   formatter:
     {LoggerJSON.Formatters.Basic,
@@ -39,6 +43,9 @@ config :logger, :default_handler,
        :otel_trace_id,
        :otel_span_id,
        :otel_trace_flags
+     ],
+     redactors: [
+       {LoggerJSON.Redactors.RedactKeys, Enum.uniq(redacted ++ pii)}
      ]}
 
 # X-Ray-compatible trace IDs and header propagation (OTLP → ADOT → X-Ray).

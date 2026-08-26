@@ -56,6 +56,17 @@ config :tailwind,
     env: %{"NODE_PATH" => [Path.expand("../deps", __DIR__), Mix.Project.build_path()]}
   ]
 
+# Shared Redacted + PII keys (also loaded by prod.exs for LoggerJSON).
+%{redacted: redacted, pii: pii} =
+  Path.join(__DIR__, "redaction_keys.exs") |> Code.eval_file() |> elem(0)
+
+config :phx_backend_boilerplate, PhxBackendBoilerplate.Logging.Redaction,
+  redacted: redacted,
+  pii: pii
+
+# Phoenix request logs (substring match on param names → "[FILTERED]").
+config :phoenix, :filter_parameters, Enum.uniq(redacted ++ pii)
+
 # Configure Elixir's Logger
 config :logger, :default_formatter,
   format: "$time $metadata[$level] $message\n",

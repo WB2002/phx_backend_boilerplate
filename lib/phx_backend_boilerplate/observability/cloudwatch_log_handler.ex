@@ -8,6 +8,7 @@ defmodule PhxBackendBoilerplate.Observability.CloudWatchLogHandler do
   @behaviour :logger_handler
   use GenServer
 
+  alias PhxBackendBoilerplate.Logging.Redaction
   alias PhxBackendBoilerplate.Observability.CloudWatchLogsClient
 
   @default_flush_interval_ms 2_000
@@ -148,7 +149,7 @@ defmodule PhxBackendBoilerplate.Observability.CloudWatchLogHandler do
           to_string(string)
 
         {:report, report} ->
-          inspect(report)
+          report |> Redaction.redact() |> inspect()
 
         {format, args} when is_list(args) ->
           :io_lib.format(format, args) |> IO.iodata_to_binary()
@@ -180,6 +181,7 @@ defmodule PhxBackendBoilerplate.Observability.CloudWatchLogHandler do
       :file,
       :line
     ])
+    |> Redaction.redact()
     |> Map.new(fn {k, v} -> {k, stringify_meta(v)} end)
   end
 
