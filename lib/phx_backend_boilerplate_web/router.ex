@@ -96,6 +96,19 @@ defmodule PhxBackendBoilerplateWeb.Router do
       by: [:ip]
   end
 
+  pipeline :rate_limit_graphql do
+    plug PhxBackendBoilerplateWeb.Plugs.RateLimit,
+      id: "graphql",
+      scale: :timer.minutes(1),
+      limit: 60,
+      by: [:ip]
+  end
+
+  pipeline :api_graphql do
+    plug :accepts, ["json"]
+    plug PhxBackendBoilerplateWeb.Plugs.Deadline
+  end
+
   # Large multipart uploads: long deadline + concurrency cap.
   # Response is JSON; request body is multipart/form-data via Plug.Parsers.
   pipeline :api_uploads do
@@ -177,7 +190,13 @@ defmodule PhxBackendBoilerplateWeb.Router do
     end
   end
 
-  # Enable LiveDashboard, FunWithFlags UI, and Swoosh mailbox preview in development
+  scope "/api" do
+    pipe_through [:api_graphql, :rate_limit_graphql]
+
+    forward "/graphql", Absinthe.Plug, schema: PhxBackendBoilerplateWeb.Graphql.Schema
+  end
+
+  # Enable LiveDashboard, FunWithFlags UI, GraphiQL, and Swoosh mailbox preview in development
   if Application.compile_env(:phx_backend_boilerplate, :dev_routes) do
     # If you want to use the LiveDashboard in production, you should put
     # it behind authentication and allow only admins to access it.
@@ -187,6 +206,12 @@ defmodule PhxBackendBoilerplateWeb.Router do
     import Phoenix.LiveDashboard.Router
 
     pipeline :dev_flags_ui do
+      plug :accepts, ["html"]
+      plug :fetch_session
+      plug :put_secure_browser_headers
+    end
+
+    pipeline :dev_graphiql do
       plug :accepts, ["html"]
       plug :fetch_session
       plug :put_secure_browser_headers
@@ -203,6 +228,16 @@ defmodule PhxBackendBoilerplateWeb.Router do
     scope "/dev/feature-flags" do
       pipe_through :dev_flags_ui
       forward "/", FunWithFlags.UI.Router, namespace: "dev/feature-flags"
+    end
+
+    # GraphiQL: query / mutation / subscription playground (dev only).
+    scope "/" do
+      pipe_through :dev_graphiql
+
+      forward "/graphiql", Absinthe.Plug.GraphiQL,
+        schema: PhxBackendBoilerplateWeb.Graphql.Schema,
+        socket: PhxBackendBoilerplateWeb.GraphqlSocket,
+        interface: :simple
     end
   end
 end

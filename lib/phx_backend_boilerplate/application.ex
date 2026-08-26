@@ -25,7 +25,8 @@ defmodule PhxBackendBoilerplate.Application do
         {Task.Supervisor, name: PhxBackendBoilerplate.Cache.TaskSupervisor},
         PhxBackendBoilerplate.Integrations.Example,
         # Start to serve requests, typically the last entry
-        PhxBackendBoilerplateWeb.Endpoint
+        PhxBackendBoilerplateWeb.Endpoint,
+        {Absinthe.Subscription, PhxBackendBoilerplateWeb.Endpoint}
       ]
 
     :ok = PhxBackendBoilerplate.Observability.setup_tracing!()

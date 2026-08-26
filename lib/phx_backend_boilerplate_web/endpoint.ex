@@ -1,5 +1,6 @@
 defmodule PhxBackendBoilerplateWeb.Endpoint do
   use Phoenix.Endpoint, otp_app: :phx_backend_boilerplate
+  use Absinthe.Phoenix.Endpoint
 
   # The session will be stored in the cookie and signed,
   # this means its contents can be read but not tampered with.
@@ -16,6 +17,10 @@ defmodule PhxBackendBoilerplateWeb.Endpoint do
     longpoll: [connect_info: [session: @session_options]]
 
   socket "/socket", PhxBackendBoilerplateWeb.UserSocket,
+    websocket: true,
+    longpoll: false
+
+  socket "/graphql", PhxBackendBoilerplateWeb.GraphqlSocket,
     websocket: true,
     longpoll: false
 
