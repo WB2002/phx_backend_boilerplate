@@ -83,6 +83,32 @@ config :phx_backend_boilerplate, PhxBackendBoilerplate.Integrations.Slack,
 config :phx_backend_boilerplate, PhxBackendBoilerplate.Integrations.Slack.Fake,
   result: {:ok, :fake}
 
+config :phx_backend_boilerplate, PhxBackendBoilerplate.Integrations.Stripe,
+  skip: false,
+  adapter: PhxBackendBoilerplate.Integrations.Stripe.Fake,
+  secret_key: "sk_test_fake",
+  webhook_secret: "whsec_test_fake"
+
+config :phx_backend_boilerplate, PhxBackendBoilerplate.Billing,
+  success_url: "http://localhost:3000/billing/success?session_id={CHECKOUT_SESSION_ID}",
+  cancel_url: "http://localhost:3000/billing/cancel",
+  plans: %{
+    "lifetime" => %{
+      key: "lifetime",
+      name: "Lifetime Access",
+      description: "One-time payment for permanent access",
+      mode: "payment",
+      price_id: "price_test_lifetime"
+    },
+    "pro" => %{
+      key: "pro",
+      name: "Pro Plan",
+      description: "Monthly subscription with recurring billing",
+      mode: "subscription",
+      price_id: "price_test_pro"
+    }
+  }
+
 # Short SWR defaults for tests (still soft < l1 < l2).
 config :phx_backend_boilerplate, PhxBackendBoilerplate.Cache,
   inclusion_policy: :inclusive,

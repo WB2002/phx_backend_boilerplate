@@ -26,6 +26,7 @@ defmodule PhxBackendBoilerplate.Application do
         {Task.Supervisor, name: PhxBackendBoilerplate.Cache.TaskSupervisor},
         PhxBackendBoilerplate.Integrations.Example,
         PhxBackendBoilerplate.Integrations.Slack.WebAPI,
+        PhxBackendBoilerplate.Integrations.Stripe.Api,
         # Start to serve requests, typically the last entry
         PhxBackendBoilerplateWeb.Endpoint,
         {Absinthe.Subscription, PhxBackendBoilerplateWeb.Endpoint}

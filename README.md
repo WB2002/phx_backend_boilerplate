@@ -240,6 +240,78 @@ export SLACK_DEFAULT_CHANNEL=C0123456789   # optional
 
 Returns `{:ok, response}`, `{:ok, :skipped}`, or `{:error, reason}`. Callers should usually log Slack failures and still treat their own work as successful (the demo Oban job does this).
 
+### Stripe Checkout billing
+
+`PhxBackendBoilerplate.Billing` integrates [Stripe Checkout](https://docs.stripe.com/payments/checkout) for two example plans:
+
+| Plan key | Mode | Example |
+| --- | --- | --- |
+| `lifetime` | One-time payment (`mode: payment`) | Permanent access purchase |
+| `pro` | Subscription (`mode: subscription`) | Recurring monthly billing |
+
+Authenticated clients create Checkout Sessions via JSON API; your SPA/mobile app redirects the user to the returned `url`. **Entitlements are granted only from Stripe webhooks**, not from the success redirect.
+
+**Endpoints**
+
+| Method | Path | Auth | Purpose |
+| --- | --- | --- | --- |
+| GET | `/api/billing/plans` | Public | Plan catalog (no price IDs) |
+| POST | `/api/billing/checkout-sessions` | Bearer JWT | Body `{"plan":"lifetime"}` or `"pro"` → `{url, session_id, plan, mode}` |
+| GET | `/api/billing/me` | Bearer JWT | Local purchases + subscription status |
+| POST | `/api/webhooks/stripe` | Stripe signature | Webhook receiver (async via Oban) |
+
+**Example flow**
+
+```bash
+# 1. Register / login to get an access token
+curl -s -X POST http://localhost:4000/api/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"email":"buyer@example.com","password":"password123"}'
+
+# 2. Create a one-time Checkout Session
+curl -s -X POST http://localhost:4000/api/billing/checkout-sessions \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"plan":"lifetime"}'
+
+# 3. Redirect the user to the returned url; Stripe sends webhooks to /api/webhooks/stripe
+
+# 4. Poll local billing status (after webhook processing)
+curl -s http://localhost:4000/api/billing/me \
+  -H "Authorization: Bearer $ACCESS_TOKEN"
+```
+
+**Stripe Dashboard setup**
+
+1. Create two **Prices** (one one-time, one recurring) in test mode
+2. Add a webhook endpoint pointing at `https://your-host/api/webhooks/stripe`
+3. Subscribe to at least: `checkout.session.completed`, `customer.subscription.updated`, `customer.subscription.deleted`
+4. For local testing, use the [Stripe CLI](https://stripe.com/docs/stripe-cli): `stripe listen --forward-to localhost:4000/api/webhooks/stripe`
+
+| Variable | Purpose | Notes |
+| --- | --- | --- |
+| `STRIPE_SECRET_KEY` | API secret key (`sk_…`) | Required when `STRIPE_SKIP=false` |
+| `STRIPE_WEBHOOK_SECRET` | Webhook signing secret (`whsec_…`) | Required in prod when Stripe is enabled |
+| `STRIPE_PRICE_LIFETIME` | Price ID for one-time plan | Maps to `lifetime` plan |
+| `STRIPE_PRICE_PRO` | Price ID for subscription plan | Maps to `pro` plan |
+| `STRIPE_SUCCESS_URL` | Checkout success redirect | Must include `{CHECKOUT_SESSION_ID}` placeholder |
+| `STRIPE_CANCEL_URL` | Checkout cancel redirect | Frontend route |
+| `STRIPE_SKIP` | Disable Stripe API calls | **Dev defaults to `true`**; prod always off |
+
+In default **dev**, `STRIPE_SKIP` is on so the app boots without Stripe keys. To exercise real Checkout:
+
+```bash
+export STRIPE_SKIP=false
+export STRIPE_SECRET_KEY=sk_test_…
+export STRIPE_WEBHOOK_SECRET=whsec_…
+export STRIPE_PRICE_LIFETIME=price_…
+export STRIPE_PRICE_PRO=price_…
+export STRIPE_SUCCESS_URL=http://localhost:3000/billing/success?session_id={CHECKOUT_SESSION_ID}
+export STRIPE_CANCEL_URL=http://localhost:3000/billing/cancel
+```
+
+Implementation modules: `PhxBackendBoilerplate.Billing`, `PhxBackendBoilerplate.Integrations.Stripe`, `PhxBackendBoilerplate.Workers.StripeWebhookJob`.
+
 ### WebSockets, PubSub, and socket auth
 
 Reusable pieces:

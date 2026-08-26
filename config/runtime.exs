@@ -170,6 +170,119 @@ slack_runtime =
 config :phx_backend_boilerplate, PhxBackendBoilerplate.Integrations.Slack, slack_runtime
 
 # ---------------------------------------------------------------------------
+# Stripe Checkout
+# ---------------------------------------------------------------------------
+
+stripe_skip? =
+  case config_env() do
+    :prod ->
+      false
+
+    :test ->
+      false
+
+    _ ->
+      case System.get_env("STRIPE_SKIP") do
+        nil -> true
+        value -> truthy?.(value)
+      end
+  end
+
+stripe_runtime = [skip: stripe_skip?]
+
+stripe_runtime =
+  case System.get_env("STRIPE_SECRET_KEY") do
+    key when is_binary(key) and key != "" ->
+      Keyword.put(stripe_runtime, :secret_key, key)
+
+    _ ->
+      stripe_runtime
+  end
+
+stripe_runtime =
+  case System.get_env("STRIPE_WEBHOOK_SECRET") do
+    secret when is_binary(secret) and secret != "" ->
+      Keyword.put(stripe_runtime, :webhook_secret, secret)
+
+    _ ->
+      stripe_runtime
+  end
+
+config :phx_backend_boilerplate, PhxBackendBoilerplate.Integrations.Stripe, stripe_runtime
+
+billing_runtime = []
+
+billing_runtime =
+  case System.get_env("STRIPE_SUCCESS_URL") do
+    url when is_binary(url) and url != "" ->
+      Keyword.put(billing_runtime, :success_url, url)
+
+    _ ->
+      billing_runtime
+  end
+
+billing_runtime =
+  case System.get_env("STRIPE_CANCEL_URL") do
+    url when is_binary(url) and url != "" ->
+      Keyword.put(billing_runtime, :cancel_url, url)
+
+    _ ->
+      billing_runtime
+  end
+
+lifetime_price = System.get_env("STRIPE_PRICE_LIFETIME")
+pro_price = System.get_env("STRIPE_PRICE_PRO")
+
+update_plan_price = fn
+  plans, _key, nil ->
+    plans
+
+  plans, key, price when is_binary(price) and price != "" ->
+    case Map.get(plans, key) do
+      nil -> plans
+      plan -> Map.put(plans, key, Map.put(plan, :price_id, price))
+    end
+end
+
+billing_plans =
+  if lifetime_price || pro_price do
+    base_plans =
+      Application.get_env(:phx_backend_boilerplate, PhxBackendBoilerplate.Billing, [])
+      |> Keyword.get(:plans, %{})
+
+    base_plans
+    |> then(&update_plan_price.(&1, "lifetime", lifetime_price))
+    |> then(&update_plan_price.(&1, "pro", pro_price))
+  end
+
+billing_runtime =
+  if billing_plans do
+    Keyword.put(billing_runtime, :plans, billing_plans)
+  else
+    billing_runtime
+  end
+
+if billing_runtime != [] do
+  config :phx_backend_boilerplate, PhxBackendBoilerplate.Billing, billing_runtime
+end
+
+if config_env() == :prod and not stripe_skip? do
+  unless System.get_env("STRIPE_SECRET_KEY") do
+    raise """
+    environment variable STRIPE_SECRET_KEY is missing.
+    Set STRIPE_SKIP=true to disable Stripe in production, or provide a secret key.
+    """
+  end
+
+  unless System.get_env("STRIPE_WEBHOOK_SECRET") do
+    raise """
+    environment variable STRIPE_WEBHOOK_SECRET is missing.
+    Set STRIPE_SKIP=true to disable Stripe in production, or provide a webhook secret.
+    """
+  end
+end
+
+# ---------------------------------------------------------------------------
 # Observability (CloudWatch Logs/Metrics + OpenTelemetry → X-Ray via collector)
 # ---------------------------------------------------------------------------
 

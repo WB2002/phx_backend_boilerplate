@@ -120,6 +120,22 @@ defmodule PhxBackendBoilerplateWeb.Router do
       by: [:ip]
   end
 
+  pipeline :rate_limit_billing do
+    plug PhxBackendBoilerplateWeb.Plugs.RateLimit,
+      id: "billing",
+      scale: :timer.minutes(1),
+      limit: 10,
+      by: [:ip]
+  end
+
+  pipeline :rate_limit_billing_public do
+    plug PhxBackendBoilerplateWeb.Plugs.RateLimit,
+      id: "billing_public",
+      scale: :timer.minutes(1),
+      limit: 60,
+      by: [:ip]
+  end
+
   pipeline :api_authenticated do
     plug PhxBackendBoilerplateWeb.Plugs.Authenticate
   end
@@ -228,6 +244,25 @@ defmodule PhxBackendBoilerplateWeb.Router do
       pipe_through [:api, :rate_limit_demo_jobs]
 
       post "/jobs", Demo.JobsController, :create
+    end
+
+    scope "/billing" do
+      pipe_through [:api, :rate_limit_billing_public]
+
+      get "/plans", BillingController, :plans
+    end
+
+    scope "/billing" do
+      pipe_through [:api, :api_authenticated, :rate_limit_billing]
+
+      post "/checkout-sessions", BillingController, :create_checkout_session
+      get "/me", BillingController, :me
+    end
+
+    scope "/webhooks" do
+      pipe_through :api
+
+      post "/stripe", Webhooks.StripeController, :create
     end
   end
 

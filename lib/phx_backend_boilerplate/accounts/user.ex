@@ -14,6 +14,7 @@ defmodule PhxBackendBoilerplate.Accounts.User do
     field :email, :string
     field :password, :string, virtual: true, redact: true
     field :password_digest, :string, redact: true
+    field :stripe_customer_id, :string
 
     has_many :sessions, Session
 

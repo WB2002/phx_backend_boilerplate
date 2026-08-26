@@ -74,6 +74,24 @@ defmodule PhxBackendBoilerplateWeb.FallbackController do
     |> json(%{errors: %{detail: "Storage error"}})
   end
 
+  def call(conn, {:error, :invalid_plan}) do
+    conn
+    |> put_status(:unprocessable_entity)
+    |> json(%{errors: %{detail: "Invalid plan", fields: %{"plan" => ["is invalid"]}}})
+  end
+
+  def call(conn, {:error, :misconfigured}) do
+    conn
+    |> put_status(:service_unavailable)
+    |> json(%{errors: %{detail: "Billing is not configured"}})
+  end
+
+  def call(conn, {:error, :skipped}) do
+    conn
+    |> put_status(:service_unavailable)
+    |> json(%{errors: %{detail: "Billing is disabled"}})
+  end
+
   def call(conn, {:error, _reason}) do
     conn
     |> put_status(:unprocessable_entity)

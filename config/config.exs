@@ -201,6 +201,34 @@ config :phx_backend_boilerplate, PhxBackendBoilerplate.Integrations.Slack,
   adapter: PhxBackendBoilerplate.Integrations.Slack.WebAPI,
   api_url: "https://slack.com/api/chat.postMessage"
 
+# Stripe Checkout — secret_key / webhook_secret / skip from runtime.exs.
+config :phx_backend_boilerplate, PhxBackendBoilerplate.Integrations.Stripe,
+  secret_key: nil,
+  webhook_secret: nil,
+  skip: true,
+  adapter: PhxBackendBoilerplate.Integrations.Stripe.Api,
+  api_base: "https://api.stripe.com"
+
+config :phx_backend_boilerplate, PhxBackendBoilerplate.Billing,
+  success_url: "http://localhost:3000/billing/success?session_id={CHECKOUT_SESSION_ID}",
+  cancel_url: "http://localhost:3000/billing/cancel",
+  plans: %{
+    "lifetime" => %{
+      key: "lifetime",
+      name: "Lifetime Access",
+      description: "One-time payment for permanent access",
+      mode: "payment",
+      price_id: "price_lifetime_placeholder"
+    },
+    "pro" => %{
+      key: "pro",
+      name: "Pro Plan",
+      description: "Monthly subscription with recurring billing",
+      mode: "subscription",
+      price_id: "price_pro_placeholder"
+    }
+  }
+
 # Multilevel cache topology (Nebulex validates these options strictly).
 config :phx_backend_boilerplate, PhxBackendBoilerplate.Cache,
   inclusion_policy: :inclusive,

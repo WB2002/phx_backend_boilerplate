@@ -20,8 +20,29 @@ defmodule PhxBackendBoilerplate.Jobs do
 
   alias PhxBackendBoilerplate.RequestContext
   alias PhxBackendBoilerplate.Workers.DemoJob
+  alias PhxBackendBoilerplate.Workers.StripeWebhookJob
 
   @max_work_ms 2_000
+
+  @doc """
+  Enqueues a `StripeWebhookJob` with the full Stripe event payload.
+
+  Uses `stripe_event_id` for Oban unique job deduplication.
+  """
+  @spec enqueue_stripe_webhook(map()) :: {:ok, Oban.Job.t()} | {:error, Ecto.Changeset.t()}
+  def enqueue_stripe_webhook(%{"id" => event_id} = event) when is_binary(event_id) do
+    %{"stripe_event_id" => event_id, "event" => event}
+    |> StripeWebhookJob.new()
+    |> Oban.insert()
+  end
+
+  def enqueue_stripe_webhook(_event), do: {:error, invalid_event_changeset()}
+
+  defp invalid_event_changeset do
+    {%{}, %{event: :string}}
+    |> cast(%{}, [:event])
+    |> add_error(:event, "invalid stripe event")
+  end
 
   @doc """
   Enqueues a `DemoJob` with string-keyed args and current request tracing IDs.
