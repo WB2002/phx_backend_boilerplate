@@ -22,4 +22,13 @@ defmodule PhxBackendBoilerplateWeb.Plugs.ParsersLimitTest do
     n = :erlang.unique_integer([:positive])
     {10, 4, rem(div(n, 256), 256), rem(n, 256)}
   end
+
+  test "multipart upload_length matches max file size times max files" do
+    files = Application.fetch_env!(:phx_backend_boilerplate, PhxBackendBoilerplate.Files)
+    parsers = Application.fetch_env!(:phx_backend_boilerplate, :parsers)
+
+    assert Keyword.fetch!(parsers, :upload_length) ==
+             Keyword.fetch!(files, :max_file_bytes) *
+               Keyword.fetch!(files, :max_files_per_request)
+  end
 end

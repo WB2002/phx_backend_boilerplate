@@ -38,6 +38,13 @@ defmodule PhxBackendBoilerplateWeb.DemoChannelTest do
     assert_reply ref, :ok, %{"hello" => "world"}
   end
 
+  test "rejects oversized ping payloads", %{socket: socket} do
+    {:ok, _, socket} = subscribe_and_join(socket, "demo:lobby", %{})
+
+    ref = push(socket, "ping", %{"blob" => String.duplicate("a", 8_192)})
+    assert_reply ref, :error, %{reason: "payload_too_large"}
+  end
+
   test "pushes PubSub broadcasts as client events", %{socket: socket} do
     {:ok, _, _socket} = subscribe_and_join(socket, "demo:lobby", %{})
 

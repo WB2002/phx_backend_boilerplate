@@ -25,6 +25,14 @@ defmodule PhxBackendBoilerplate.SWRTest do
     end
   end
 
+  test "rejects keys longer than 256 bytes" do
+    key = String.duplicate("k", 257)
+
+    assert_raise ArgumentError, ~r/SWR cache key exceeds/, fn ->
+      SWR.fetch(key, fn -> {:ok, 1} end)
+    end
+  end
+
   test "miss loads once and serves fresh", %{key: key} do
     {:ok, counter} = Agent.start_link(fn -> 0 end)
 

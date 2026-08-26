@@ -304,6 +304,7 @@ defmodule PhxBackendBoilerplateWeb.Router do
 
     forward "/graphql", Absinthe.Plug,
       schema: PhxBackendBoilerplateWeb.Graphql.Schema,
+      pipeline: {PhxBackendBoilerplateWeb.Graphql.Pipeline, :for_plug},
       analyze_complexity: true,
       max_complexity: PhxBackendBoilerplateWeb.Graphql.Config.max_complexity(),
       token_limit: PhxBackendBoilerplateWeb.Graphql.Config.token_limit()
@@ -351,6 +352,7 @@ defmodule PhxBackendBoilerplateWeb.Router do
 
       forward "/graphiql", Absinthe.Plug.GraphiQL,
         schema: PhxBackendBoilerplateWeb.Graphql.Schema,
+        pipeline: {PhxBackendBoilerplateWeb.Graphql.Pipeline, :for_plug},
         socket: PhxBackendBoilerplateWeb.GraphqlSocket,
         interface: :simple
     end

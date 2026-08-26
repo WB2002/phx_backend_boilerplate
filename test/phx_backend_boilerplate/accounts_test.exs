@@ -36,6 +36,22 @@ defmodule PhxBackendBoilerplate.AccountsTest do
 
       assert "should be at least 8 character(s)" in errors_on(changeset).password
     end
+
+    test "rejects passwords longer than 72 bytes before hashing" do
+      too_long = String.duplicate("a", 73)
+
+      assert {:error, changeset} =
+               Accounts.register(Map.put(@valid_attrs, "password", too_long))
+
+      assert "should be at most 72 character(s)" in errors_on(changeset).password
+    end
+
+    test "accepts a 72-byte password" do
+      password = String.duplicate("a", 72)
+
+      assert {:ok, _auth} =
+               Accounts.register(Map.put(@valid_attrs, "password", password))
+    end
   end
 
   describe "login/2" do
@@ -53,6 +69,13 @@ defmodule PhxBackendBoilerplate.AccountsTest do
     test "rejects invalid password" do
       assert {:error, :invalid_credentials} =
                Accounts.login("user@example.com", "wrong-password")
+    end
+
+    test "rejects oversized passwords without Argon2 verification" do
+      too_long = String.duplicate("a", 73)
+
+      assert {:error, :invalid_credentials} =
+               Accounts.login("user@example.com", too_long)
     end
 
     test "rejects unknown email with same error" do

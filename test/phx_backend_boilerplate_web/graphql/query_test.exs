@@ -79,4 +79,12 @@ defmodule PhxBackendBoilerplateWeb.Graphql.QueryTest do
     assert %{"errors" => [%{"message" => message} | _]} = json_response(conn, 200)
     assert message =~ ~r/token/i
   end
+
+  test "returns error when selection depth exceeds limit", %{conn: conn} do
+    max = PhxBackendBoilerplateWeb.Graphql.Config.max_depth()
+    conn = graphql_post(conn, nested_depth_query(max + 1))
+
+    assert %{"errors" => [%{"message" => message} | _]} = json_response(conn, 200)
+    assert message =~ "depth"
+  end
 end

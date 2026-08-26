@@ -12,17 +12,21 @@ defmodule PhxBackendBoilerplateWeb.UserSocket do
 
   @impl true
   def connect(%{"token" => token}, socket, _connect_info) when is_binary(token) do
-    case PhxBackendBoilerplateWeb.SocketAuth.verify(token) do
-      {:ok, %{"sub" => user_id, "email" => email}} ->
-        socket =
-          socket
-          |> assign(:current_user_id, user_id)
-          |> assign(:email, email)
+    if byte_size(token) > PhxBackendBoilerplateWeb.SocketLimits.max_token_bytes() do
+      :error
+    else
+      case PhxBackendBoilerplateWeb.SocketAuth.verify(token) do
+        {:ok, %{"sub" => user_id, "email" => email}} ->
+          socket =
+            socket
+            |> assign(:current_user_id, user_id)
+            |> assign(:email, email)
 
-        {:ok, socket}
+          {:ok, socket}
 
-      {:error, _reason} ->
-        :error
+        {:error, _reason} ->
+          :error
+      end
     end
   end
 

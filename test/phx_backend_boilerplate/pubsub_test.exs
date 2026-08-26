@@ -32,4 +32,15 @@ defmodule PhxBackendBoilerplate.PubSubTest do
 
     assert_receive {PubSub, ^topic, ^payload}
   end
+
+  test "rejects oversized broadcast payloads" do
+    topic = "test:pubsub:#{System.unique_integer([:positive])}"
+    payload = String.duplicate("a", PubSub.max_payload_bytes() + 1)
+
+    assert {:error, :payload_too_large} = PubSub.broadcast(topic, payload)
+
+    assert_raise ArgumentError, fn ->
+      PubSub.broadcast!(topic, payload)
+    end
+  end
 end

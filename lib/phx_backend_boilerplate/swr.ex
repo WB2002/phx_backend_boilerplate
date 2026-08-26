@@ -34,7 +34,12 @@ defmodule PhxBackendBoilerplate.SWR do
   @type freshness :: Entry.freshness()
   @type meta :: %{freshness: freshness()}
 
+  @max_key_bytes 256
+
   @doc """
+  Fetches `key` via SWR.
+
+  @doc \"""
   Fetches `key` via SWR.
 
   `fun` must return `{:ok, value}` or `{:error, reason}`.
@@ -50,6 +55,10 @@ defmodule PhxBackendBoilerplate.SWR do
   def fetch(key, fun, opts \\ [])
 
   def fetch(key, fun, opts) when is_binary(key) and is_function(fun, 0) and is_list(opts) do
+    if byte_size(key) > @max_key_bytes do
+      raise ArgumentError, "SWR cache key exceeds #{@max_key_bytes} bytes"
+    end
+
     cfg = config(opts)
     meta = Keyword.get(opts, :telemetry_metadata, %{}) |> Map.put(:key, key)
 

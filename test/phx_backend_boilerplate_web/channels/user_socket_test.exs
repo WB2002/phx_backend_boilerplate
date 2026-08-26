@@ -2,6 +2,7 @@ defmodule PhxBackendBoilerplateWeb.UserSocketTest do
   use PhxBackendBoilerplateWeb.ChannelCase, async: true
 
   alias PhxBackendBoilerplateWeb.SocketAuth
+  alias PhxBackendBoilerplateWeb.SocketLimits
   alias PhxBackendBoilerplateWeb.UserSocket
 
   @claims %{"sub" => "demo-user", "email" => "demo@example.com"}
@@ -21,5 +22,10 @@ defmodule PhxBackendBoilerplateWeb.UserSocketTest do
 
   test "rejects invalid token" do
     assert :error = connect(UserSocket, %{"token" => "bogus"})
+  end
+
+  test "rejects oversized connect tokens" do
+    token = String.duplicate("a", SocketLimits.max_token_bytes() + 1)
+    assert :error = connect(UserSocket, %{"token" => token})
   end
 end

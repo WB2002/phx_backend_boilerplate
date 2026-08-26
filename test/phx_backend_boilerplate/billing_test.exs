@@ -240,6 +240,24 @@ defmodule PhxBackendBoilerplate.BillingTest do
     assert status.subscription.plan == "pro"
   end
 
+  test "get_status/1 caps purchase history", %{auth: auth} do
+    max = Billing.max_status_purchases()
+
+    for i <- 1..(max + 3) do
+      %Purchase{}
+      |> Purchase.changeset(%{
+        user_id: auth.user.id,
+        plan: "lifetime",
+        stripe_checkout_session_id: "cs_cap_#{i}_#{System.unique_integer([:positive])}",
+        status: "completed"
+      })
+      |> Repo.insert!()
+    end
+
+    status = Billing.get_status(auth.user)
+    assert length(status.purchases) == max
+  end
+
   defp register_attrs do
     %{"email" => "auth@example.com", "password" => "password123"}
   end

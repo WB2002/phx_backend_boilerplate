@@ -39,6 +39,14 @@ defmodule PhxBackendBoilerplate.Accounts do
   """
   @spec login(String.t(), String.t()) :: {:ok, auth_bundle()} | {:error, :invalid_credentials}
   def login(email, password) when is_binary(email) and is_binary(password) do
+    if byte_size(password) > Digest.max_plaintext_bytes() do
+      {:error, :invalid_credentials}
+    else
+      do_login(email, password)
+    end
+  end
+
+  defp do_login(email, password) do
     normalized_email = String.downcase(String.trim(email))
 
     case Repo.get_by(User, email: normalized_email) do

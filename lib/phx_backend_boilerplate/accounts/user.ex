@@ -27,19 +27,19 @@ defmodule PhxBackendBoilerplate.Accounts.User do
     |> cast(attrs, [:email, :password])
     |> validate_required([:email, :password])
     |> validate_format(:email, ~r/^[^\s]+@[^\s]+$/, message: "must be a valid email")
-    |> validate_length(:password, min: 8)
+    |> validate_length(:password, min: 8, max: Digest.max_plaintext_bytes())
     |> update_change(:email, &String.downcase/1)
     |> unique_constraint(:email)
     |> put_password_digest()
   end
 
   defp put_password_digest(changeset) do
-    case get_change(changeset, :password) do
-      nil ->
-        changeset
+    password = get_change(changeset, :password)
 
-      password ->
-        put_change(changeset, :password_digest, Digest.digest(password))
+    if changeset.valid? and is_binary(password) do
+      put_change(changeset, :password_digest, Digest.digest(password))
+    else
+      changeset
     end
   end
 end

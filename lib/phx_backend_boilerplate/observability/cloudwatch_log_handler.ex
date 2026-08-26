@@ -14,6 +14,7 @@ defmodule PhxBackendBoilerplate.Observability.CloudWatchLogHandler do
   @default_flush_interval_ms 2_000
   @default_max_batch 50
   @default_error_throttle_ms 30_000
+  @max_mailbox_len 1_000
 
   def start_link(config) when is_list(config), do: start_link(Map.new(config))
 
@@ -46,8 +47,17 @@ defmodule PhxBackendBoilerplate.Observability.CloudWatchLogHandler do
   @impl true
   def log(log_event, _handler_config) do
     case GenServer.whereis(__MODULE__) do
-      nil -> :ok
-      pid -> GenServer.cast(pid, {:log, log_event})
+      nil ->
+        :ok
+
+      pid ->
+        case Process.info(pid, :message_queue_len) do
+          {:message_queue_len, n} when n >= @max_mailbox_len ->
+            :ok
+
+          _ ->
+            GenServer.cast(pid, {:log, log_event})
+        end
     end
   end
 
@@ -73,7 +83,7 @@ defmodule PhxBackendBoilerplate.Observability.CloudWatchLogHandler do
   @impl GenServer
   def handle_cast({:log, log_event}, state) do
     event = encode_event(log_event)
-    buffer = [event | state.buffer]
+    buffer = Enum.take([event | state.buffer], state.config.max_buffer)
     state = %{state | buffer: buffer}
 
     if length(buffer) >= state.config.max_batch do
@@ -113,11 +123,14 @@ defmodule PhxBackendBoilerplate.Observability.CloudWatchLogHandler do
         stream -> stream
       end
 
+    max_batch = Map.get(config, :max_batch, @default_max_batch)
+
     %{
       log_group: Map.fetch!(config, :log_group),
       log_stream: log_stream,
       flush_interval_ms: Map.get(config, :flush_interval_ms, @default_flush_interval_ms),
-      max_batch: Map.get(config, :max_batch, @default_max_batch),
+      max_batch: max_batch,
+      max_buffer: Map.get(config, :max_buffer, max_batch * 4),
       error_throttle_ms: Map.get(config, :error_throttle_ms, @default_error_throttle_ms)
     }
   end
@@ -207,8 +220,8 @@ defmodule PhxBackendBoilerplate.Observability.CloudWatchLogHandler do
         state = maybe_report_error(state, reason)
 
         buffer =
-          if length(state.buffer) > state.config.max_batch * 4 do
-            Enum.take(state.buffer, state.config.max_batch * 2)
+          if length(state.buffer) > state.config.max_buffer do
+            Enum.take(state.buffer, state.config.max_buffer)
           else
             state.buffer
           end

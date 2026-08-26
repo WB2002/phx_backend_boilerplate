@@ -12,13 +12,24 @@ defmodule PhxBackendBoilerplateWeb.GraphqlSocket do
   use Phoenix.Socket
 
   use Absinthe.Phoenix.Socket,
-    schema: PhxBackendBoilerplateWeb.Graphql.Schema
+    schema: PhxBackendBoilerplateWeb.Graphql.Schema,
+    pipeline: {PhxBackendBoilerplateWeb.Graphql.Pipeline, :for_socket}
 
   alias PhxBackendBoilerplate.Accounts
   alias PhxBackendBoilerplateWeb.Graphql.Config
 
   @impl true
   def connect(%{"token" => token}, socket, _connect_info) when is_binary(token) do
+    if byte_size(token) > PhxBackendBoilerplateWeb.SocketLimits.max_token_bytes() do
+      :error
+    else
+      authenticate_socket(token, socket)
+    end
+  end
+
+  def connect(_params, _socket, _connect_info), do: :error
+
+  defp authenticate_socket(token, socket) do
     case Accounts.authenticate_access_token(token) do
       {:ok, %{user_id: user_id, session_id: session_id}} ->
         socket =
@@ -41,8 +52,6 @@ defmodule PhxBackendBoilerplateWeb.GraphqlSocket do
         :error
     end
   end
-
-  def connect(_params, _socket, _connect_info), do: :error
 
   @impl true
   def id(%{assigns: %{current_user_id: user_id}}), do: "graphql_socket:#{user_id}"

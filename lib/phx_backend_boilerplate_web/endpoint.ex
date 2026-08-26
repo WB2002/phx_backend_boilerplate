@@ -12,9 +12,12 @@ defmodule PhxBackendBoilerplateWeb.Endpoint do
     same_site: "Lax"
   ]
 
-  socket "/live", Phoenix.LiveView.Socket,
-    websocket: [connect_info: [session: @session_options]],
-    longpoll: [connect_info: [session: @session_options]]
+  # LiveDashboard (dev_routes only). Production API has no LiveView pages.
+  if Application.compile_env(:phx_backend_boilerplate, :dev_routes, false) do
+    socket "/live", Phoenix.LiveView.Socket,
+      websocket: [connect_info: [session: @session_options]],
+      longpoll: [connect_info: [session: @session_options]]
+  end
 
   socket "/socket", PhxBackendBoilerplateWeb.UserSocket,
     websocket: true,

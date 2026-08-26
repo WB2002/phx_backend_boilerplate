@@ -17,6 +17,8 @@ defmodule PhxBackendBoilerplateWeb.DemoChannel do
 
   alias PhxBackendBoilerplate.PubSub
 
+  @max_ping_payload_bytes 4_096
+
   @impl true
   def join("demo:lobby", _payload, socket) do
     :ok = PubSub.subscribe("demo:lobby")
@@ -39,7 +41,11 @@ defmodule PhxBackendBoilerplateWeb.DemoChannel do
 
   @impl true
   def handle_in("ping", payload, socket) do
-    {:reply, {:ok, payload}, socket}
+    if :erlang.external_size(payload) > @max_ping_payload_bytes do
+      {:reply, {:error, %{reason: "payload_too_large"}}, socket}
+    else
+      {:reply, {:ok, payload}, socket}
+    end
   end
 
   @impl true

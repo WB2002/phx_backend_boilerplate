@@ -10,7 +10,15 @@ defmodule PhxBackendBoilerplate.Application do
     # Finch must start before ExAws/CloudWatch exporters use it.
     children =
       [
-        {Finch, name: PhxBackendBoilerplate.Finch}
+        {Finch,
+         name: PhxBackendBoilerplate.Finch,
+         pools: %{
+           default: [
+             size: 10,
+             count: 1,
+             pool_max_idle_time: :timer.minutes(5)
+           ]
+         }}
       ] ++
         cloudwatch_log_handler_children() ++
         [

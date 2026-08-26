@@ -13,6 +13,8 @@ defmodule PhxBackendBoilerplate.Billing do
   alias PhxBackendBoilerplate.Integrations.Stripe
   alias PhxBackendBoilerplate.Repo
 
+  @max_status_purchases 50
+
   @doc """
   Returns the public plan catalog (no secret keys).
   """
@@ -57,6 +59,7 @@ defmodule PhxBackendBoilerplate.Billing do
       Purchase
       |> where([p], p.user_id == ^user_id)
       |> order_by([p], desc: p.inserted_at)
+      |> limit(^max_status_purchases())
       |> Repo.all()
       |> Enum.map(&purchase_payload/1)
 
@@ -73,6 +76,12 @@ defmodule PhxBackendBoilerplate.Billing do
       subscription: subscription
     }
   end
+
+  @doc """
+  Maximum purchase rows returned by `get_status/1`.
+  """
+  @spec max_status_purchases() :: pos_integer()
+  def max_status_purchases, do: @max_status_purchases
 
   @subscription_replace_fields [
     :plan,

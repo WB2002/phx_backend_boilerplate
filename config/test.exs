@@ -52,6 +52,8 @@ config :phx_backend_boilerplate, PhxBackendBoilerplate.Files,
   storage: PhxBackendBoilerplate.Files.Storage.Local,
   scanner: PhxBackendBoilerplate.Files.Scanner.Fake
 
+config :phx_backend_boilerplate, :parsers, upload_length: 1_000_000 * 5
+
 # Fast timeouts for outbound HTTP tests; plug stubs avoid the network.
 config :phx_backend_boilerplate, PhxBackendBoilerplate.HTTP, receive_timeout: 1_000
 
@@ -113,7 +115,8 @@ config :phx_backend_boilerplate, PhxBackendBoilerplate.Billing,
 config :phx_backend_boilerplate, PhxBackendBoilerplate.Cache,
   inclusion_policy: :inclusive,
   levels: [
-    {PhxBackendBoilerplate.Cache.L1, [gc_interval: :timer.hours(12), max_size: 10_000]},
+    {PhxBackendBoilerplate.Cache.L1,
+     [gc_interval: :timer.hours(12), max_size: 10_000, allocated_memory: 8_000_000]},
     {PhxBackendBoilerplate.Cache.L2, []}
   ]
 

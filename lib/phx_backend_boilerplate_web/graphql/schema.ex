@@ -14,6 +14,7 @@ defmodule PhxBackendBoilerplateWeb.Graphql.Schema do
   alias PhxBackendBoilerplateWeb.Graphql.Config
   alias PhxBackendBoilerplateWeb.Graphql.Middleware.RequireAuth
   alias PhxBackendBoilerplateWeb.Graphql.Resolvers.Demo
+  alias PhxBackendBoilerplateWeb.Graphql.SubscriptionBudget
 
   query do
     @desc "Health / integration check"
@@ -42,7 +43,13 @@ defmodule PhxBackendBoilerplateWeb.Graphql.Schema do
       config(fn _args, info ->
         case info.context do
           %{current_user_id: user_id} when is_binary(user_id) ->
-            {:ok, topic: Config.echo_topic(user_id)}
+            case SubscriptionBudget.checkout() do
+              :ok ->
+                {:ok, topic: Config.echo_topic(user_id)}
+
+              {:error, message} ->
+                {:error, message}
+            end
 
           _ ->
             {:error, "Unauthorized"}

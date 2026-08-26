@@ -39,6 +39,18 @@ defmodule PhxBackendBoilerplateWeb.Graphql.Config do
     |> Keyword.get(:max_query_bytes, 16_384)
   end
 
+  @spec max_subscriptions() :: pos_integer()
+  def max_subscriptions do
+    graphql_config()
+    |> Keyword.get(:max_subscriptions, 4)
+  end
+
+  @spec max_depth() :: pos_integer()
+  def max_depth do
+    graphql_config()
+    |> Keyword.get(:max_depth, 10)
+  end
+
   defp graphql_config do
     Application.get_env(:phx_backend_boilerplate, :graphql, [])
   end

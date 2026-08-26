@@ -82,4 +82,13 @@ defmodule PhxBackendBoilerplateWeb.GraphqlCase do
   def oversized_query(max_bytes) when is_integer(max_bytes) and max_bytes > 0 do
     String.duplicate(" ", max_bytes + 1) <> "{ ping }"
   end
+
+  @doc """
+  Nested selection sets used to exceed `max_depth`.
+  """
+  def nested_depth_query(depth) when is_integer(depth) and depth > 0 do
+    open = Enum.map_join(1..depth, "", fn n -> "f#{n} { " end)
+    close = String.duplicate("}", depth)
+    "{ #{open} ping #{close} }"
+  end
 end

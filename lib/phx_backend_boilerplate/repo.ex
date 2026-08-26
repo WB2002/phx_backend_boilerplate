@@ -7,6 +7,9 @@ defmodule PhxBackendBoilerplate.Repo do
   Attaches the current request/correlation context to Ecto query telemetry.
   """
   def default_options(_operation) do
-    [telemetry_options: PhxBackendBoilerplate.RequestContext.current()]
+    [
+      timeout: 15_000,
+      telemetry_options: PhxBackendBoilerplate.RequestContext.current()
+    ]
   end
 end

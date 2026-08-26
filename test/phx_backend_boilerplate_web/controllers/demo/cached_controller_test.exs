@@ -7,10 +7,24 @@ defmodule PhxBackendBoilerplateWeb.Demo.CachedControllerTest do
   setup %{conn: conn} do
     ip = unique_ip()
     key = "demo-cached-#{:erlang.unique_integer([:positive])}"
-    _ = L1.delete(key)
-    _ = L2.delete(key)
-    _ = L2.delete("swr:lock:#{key}")
+    storage_key = "demo:cached:#{key}"
+    _ = L1.delete(storage_key)
+    _ = L2.delete(storage_key)
+    _ = L2.delete("swr:lock:#{storage_key}")
     {:ok, conn: Map.put(conn, :remote_ip, ip), key: key}
+  end
+
+  test "rejects oversized cache keys", %{conn: conn} do
+    key = String.duplicate("a", 65)
+    conn = get(conn, ~p"/api/demo/cached?key=#{key}&work_ms=0")
+
+    assert json_response(conn, 400) == %{"errors" => %{"detail" => "Invalid cache key"}}
+  end
+
+  test "rejects cache keys with disallowed characters", %{conn: conn} do
+    conn = get(conn, ~p"/api/demo/cached", %{"key" => "foo/bar", "work_ms" => "0"})
+
+    assert json_response(conn, 400) == %{"errors" => %{"detail" => "Invalid cache key"}}
   end
 
   test "returns cached payload with freshness", %{conn: conn, key: key} do

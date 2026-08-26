@@ -161,4 +161,20 @@ defmodule PhxBackendBoilerplate.HTTPTest do
                plug: {Req.Test, stub_name}
              )
   end
+
+  test "rejects responses larger than max_body_bytes" do
+    stub_name = :"http_big_#{System.unique_integer([:positive])}"
+
+    Req.Test.stub(stub_name, fn conn ->
+      Plug.Conn.send_resp(conn, 200, String.duplicate("a", 64))
+    end)
+
+    assert {:error, :response_too_large} =
+             HTTP.get("/big",
+               base_url: "https://example.test",
+               plug: {Req.Test, stub_name},
+               decode_body: false,
+               max_body_bytes: 16
+             )
+  end
 end

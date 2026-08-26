@@ -6,6 +6,7 @@ defmodule PhxBackendBoilerplateWeb.Graphql.SubscriptionTest do
 
   alias PhxBackendBoilerplate.Accounts
   alias PhxBackendBoilerplateWeb.GraphqlSocket
+  alias PhxBackendBoilerplateWeb.SocketLimits
 
   setup do
     {:ok, auth} = Accounts.register(unique_user_attrs())
@@ -56,6 +57,11 @@ defmodule PhxBackendBoilerplateWeb.Graphql.SubscriptionTest do
     assert :error = connect(GraphqlSocket, %{"token" => "not-a-jwt"})
   end
 
+  test "rejects oversized connect tokens" do
+    token = String.duplicate("a", SocketLimits.max_token_bytes() + 1)
+    assert :error = connect(GraphqlSocket, %{"token" => token})
+  end
+
   test "rejects connect when session is revoked", %{auth: auth} do
     :ok = Accounts.logout(auth.session.id)
     assert :error = connect(GraphqlSocket, %{"token" => auth.access_token})
@@ -97,5 +103,27 @@ defmodule PhxBackendBoilerplateWeb.Graphql.SubscriptionTest do
     }
 
     refute_push "subscription:data", %{result: %{data: %{"echoed" => %{"message" => "from-a"}}}}
+  end
+
+  test "rejects WebSocket documents that exceed the query byte limit", %{socket: socket} do
+    max_bytes = PhxBackendBoilerplateWeb.Graphql.Config.max_query_bytes()
+    ref = push_doc(socket, oversized_query(max_bytes))
+
+    assert_reply ref, :error, %{errors: [%{message: message}]}
+    assert message =~ "maximum size"
+  end
+
+  test "rejects additional subscriptions beyond the per-socket cap", %{socket: socket} do
+    max = PhxBackendBoilerplateWeb.Graphql.Config.max_subscriptions()
+    query = "subscription { echoed { id message } }"
+
+    for _ <- 1..max do
+      ref = push_doc(socket, query)
+      assert_reply ref, :ok, %{subscriptionId: _}
+    end
+
+    over = push_doc(socket, query)
+    assert_reply over, :error, %{errors: [%{message: message}]}
+    assert message =~ "subscription"
   end
 end

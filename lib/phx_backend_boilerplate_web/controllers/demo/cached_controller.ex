@@ -14,17 +14,30 @@ defmodule PhxBackendBoilerplateWeb.Demo.CachedController do
   alias PhxBackendBoilerplate.SWR
 
   @max_work_ms 2_000
+  @max_key_bytes 64
+  @key_prefix "demo:cached:"
   @demo_soft_ttl 2_000
   @demo_l1_hard_ttl 5_000
   @demo_l2_hard_ttl 15_000
 
   def show(conn, params) do
-    key = params |> Map.get("key", "demo") |> to_string()
     work_ms = parse_work_ms(params)
     simulate_error? = Map.get(params, "error") in ["1", 1]
 
+    case cache_key(params) do
+      {:ok, user_key, storage_key} ->
+        fetch_cached(conn, user_key, storage_key, work_ms, simulate_error?)
+
+      :error ->
+        conn
+        |> put_status(:bad_request)
+        |> json(%{errors: %{detail: "Invalid cache key"}})
+    end
+  end
+
+  defp fetch_cached(conn, user_key, storage_key, work_ms, simulate_error?) do
     case SWR.fetch(
-           key,
+           storage_key,
            fn ->
              cond do
                simulate_error? ->
@@ -35,7 +48,7 @@ defmodule PhxBackendBoilerplateWeb.Demo.CachedController do
 
                  {:ok,
                   %{
-                    "key" => key,
+                    "key" => user_key,
                     "computed_at" => System.system_time(:millisecond),
                     "work_ms" => work_ms
                   }}
@@ -43,7 +56,7 @@ defmodule PhxBackendBoilerplateWeb.Demo.CachedController do
                true ->
                  {:ok,
                   %{
-                    "key" => key,
+                    "key" => user_key,
                     "computed_at" => System.system_time(:millisecond),
                     "work_ms" => work_ms
                   }}
@@ -76,4 +89,21 @@ defmodule PhxBackendBoilerplateWeb.Demo.CachedController do
       _ -> 0
     end
   end
+
+  defp cache_key(params) do
+    user_key = params |> Map.get("key", "demo") |> to_string()
+
+    if valid_user_key?(user_key) do
+      {:ok, user_key, @key_prefix <> user_key}
+    else
+      :error
+    end
+  end
+
+  defp valid_user_key?(key)
+       when is_binary(key) and byte_size(key) > 0 and byte_size(key) <= @max_key_bytes do
+    Regex.match?(~r/^[A-Za-z0-9._-]+$/, key)
+  end
+
+  defp valid_user_key?(_), do: false
 end

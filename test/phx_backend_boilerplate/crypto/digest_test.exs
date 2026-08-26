@@ -21,4 +21,18 @@ defmodule PhxBackendBoilerplate.Crypto.DigestTest do
   test "dummy_verify always returns false" do
     refute Digest.dummy_verify()
   end
+
+  test "digest refuses plaintext longer than 72 bytes" do
+    assert_raise ArgumentError, fn ->
+      Digest.digest(String.duplicate("a", 73))
+    end
+  end
+
+  test "verify refuses plaintext longer than 72 bytes" do
+    stored = Digest.digest("short-ok")
+
+    assert_raise ArgumentError, fn ->
+      Digest.verify(String.duplicate("a", 73), stored)
+    end
+  end
 end

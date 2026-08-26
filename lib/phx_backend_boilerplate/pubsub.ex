@@ -13,6 +13,7 @@ defmodule PhxBackendBoilerplate.PubSub do
   """
 
   @server __MODULE__
+  @max_payload_bytes 32_768
 
   @type topic :: Phoenix.PubSub.topic()
   @type payload :: term()
@@ -34,6 +35,9 @@ defmodule PhxBackendBoilerplate.PubSub do
     Phoenix.PubSub.unsubscribe(@server, topic)
   end
 
+  @spec max_payload_bytes() :: pos_integer()
+  def max_payload_bytes, do: @max_payload_bytes
+
   @doc """
   Broadcasts a tagged message to all subscribers of `topic`.
 
@@ -41,7 +45,9 @@ defmodule PhxBackendBoilerplate.PubSub do
   """
   @spec broadcast(topic(), payload()) :: :ok | {:error, term()}
   def broadcast(topic, payload) when is_binary(topic) do
-    Phoenix.PubSub.broadcast(@server, topic, {__MODULE__, topic, payload})
+    with :ok <- validate_payload(payload) do
+      Phoenix.PubSub.broadcast(@server, topic, {__MODULE__, topic, payload})
+    end
   end
 
   @doc """
@@ -49,6 +55,20 @@ defmodule PhxBackendBoilerplate.PubSub do
   """
   @spec broadcast!(topic(), payload()) :: :ok
   def broadcast!(topic, payload) when is_binary(topic) do
-    Phoenix.PubSub.broadcast!(@server, topic, {__MODULE__, topic, payload})
+    case validate_payload(payload) do
+      :ok ->
+        Phoenix.PubSub.broadcast!(@server, topic, {__MODULE__, topic, payload})
+
+      {:error, reason} ->
+        raise ArgumentError, "PubSub payload rejected: #{inspect(reason)}"
+    end
+  end
+
+  defp validate_payload(payload) do
+    if :erlang.external_size(payload) > @max_payload_bytes do
+      {:error, :payload_too_large}
+    else
+      :ok
+    end
   end
 end

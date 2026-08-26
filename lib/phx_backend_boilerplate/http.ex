@@ -20,6 +20,7 @@ defmodule PhxBackendBoilerplate.HTTP do
 
   @finch PhxBackendBoilerplate.Finch
   @default_receive_timeout 15_000
+  @default_max_body_bytes 2_000_000
 
   @doc """
   Builds a `Req.Request` with shared defaults, app config, and `opts`.
@@ -32,6 +33,7 @@ defmodule PhxBackendBoilerplate.HTTP do
     opts
     |> merge_opts()
     |> Keyword.put(:retry, false)
+    |> Keyword.delete(:max_body_bytes)
     |> Req.new()
   end
 
@@ -47,6 +49,7 @@ defmodule PhxBackendBoilerplate.HTTP do
     else
       merged = merge_opts(opts)
       config_timeout = Keyword.fetch!(merged, :receive_timeout)
+      {max_body_bytes, merged} = Keyword.pop!(merged, :max_body_bytes)
 
       merged =
         merged
@@ -58,6 +61,7 @@ defmodule PhxBackendBoilerplate.HTTP do
       |> Req.new()
       |> Req.request()
       |> classify_timeout(remaining_before, config_timeout)
+      |> enforce_max_body(max_body_bytes)
     end
   end
 
@@ -84,7 +88,8 @@ defmodule PhxBackendBoilerplate.HTTP do
   defp merge_opts(opts) do
     defaults = [
       finch: @finch,
-      receive_timeout: @default_receive_timeout
+      receive_timeout: @default_receive_timeout,
+      max_body_bytes: @default_max_body_bytes
     ]
 
     app_opts = Application.get_env(:phx_backend_boilerplate, __MODULE__, [])
@@ -138,4 +143,22 @@ defmodule PhxBackendBoilerplate.HTTP do
   end
 
   defp classify_timeout(result, _remaining_before, _config_timeout), do: result
+
+  defp enforce_max_body({:ok, %Req.Response{} = response}, max_body_bytes)
+       when is_integer(max_body_bytes) and max_body_bytes > 0 do
+    if response_body_bytes(response) > max_body_bytes do
+      {:error, :response_too_large}
+    else
+      {:ok, response}
+    end
+  end
+
+  defp enforce_max_body(result, _max_body_bytes), do: result
+
+  defp response_body_bytes(%Req.Response{body: body}) when is_binary(body), do: byte_size(body)
+
+  defp response_body_bytes(%Req.Response{body: body}) when is_list(body),
+    do: IO.iodata_length(body)
+
+  defp response_body_bytes(%Req.Response{body: body}), do: :erlang.external_size(body)
 end

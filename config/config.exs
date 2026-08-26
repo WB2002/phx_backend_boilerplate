@@ -11,16 +11,31 @@ config :phx_backend_boilerplate,
   ecto_repos: [PhxBackendBoilerplate.Repo],
   generators: [timestamp_type: :utc_datetime]
 
+config :phx_backend_boilerplate, PhxBackendBoilerplate.Repo,
+  timeout: 15_000,
+  queue_target: 50,
+  queue_interval: 1_000
+
 # Plug.Parsers body limits: default JSON/urlencoded vs multipart uploads only.
+# upload_length stays in lockstep with Files max_file_bytes * max_files_per_request.
 config :phx_backend_boilerplate, :parsers,
   length: 8_000_000,
-  upload_length: 500_000_000
+  upload_length: 100_000_000 * 5
 
 # GraphQL document budgets (HTTP query string + Absinthe lexer/complexity).
 config :phx_backend_boilerplate, :graphql,
   max_query_bytes: 16_384,
   token_limit: 2000,
-  max_complexity: 100
+  max_complexity: 100,
+  max_depth: 10,
+  max_subscriptions: 4
+
+# WebSocket / Bandit connection budgets (also applied on Endpoint :http).
+config :phx_backend_boilerplate, :socket_limits,
+  max_frame_size: 65_536,
+  max_fragmented_message_size: 262_144,
+  max_connections: 4_096,
+  max_token_bytes: 8_192
 
 # Configure the endpoint
 config :phx_backend_boilerplate, PhxBackendBoilerplateWeb.Endpoint,
@@ -31,7 +46,16 @@ config :phx_backend_boilerplate, PhxBackendBoilerplateWeb.Endpoint,
     layout: false
   ],
   pubsub_server: PhxBackendBoilerplate.PubSub,
-  live_view: [signing_salt: "f0oJqila"]
+  live_view: [signing_salt: "f0oJqila"],
+  http: [
+    websocket_options: [
+      max_frame_size: 65_536,
+      max_fragmented_message_size: 262_144
+    ],
+    thousand_island_options: [
+      num_connections: 4_096
+    ]
+  ]
 
 # Configure the mailer
 #
@@ -156,7 +180,9 @@ config :phx_backend_boilerplate, PhxBackendBoilerplate.Deadline, timeout: 15_000
 
 # Shared outbound HTTP transport (Req). Retry is always forced off in code;
 # ExternalService owns retry/circuit-breaker policy per integration client.
-config :phx_backend_boilerplate, PhxBackendBoilerplate.HTTP, receive_timeout: 15_000
+config :phx_backend_boilerplate, PhxBackendBoilerplate.HTTP,
+  receive_timeout: 15_000,
+  max_body_bytes: 2_000_000
 
 # CSP + companion security headers (strict for API; looser for /dev HTML UIs).
 config :phx_backend_boilerplate, PhxBackendBoilerplateWeb.Plugs.SecurityHeaders,
@@ -244,7 +270,8 @@ config :phx_backend_boilerplate, PhxBackendBoilerplate.Cache,
     {PhxBackendBoilerplate.Cache.L1,
      [
        gc_interval: :timer.hours(12),
-       max_size: 100_000
+       max_size: 100_000,
+       allocated_memory: 64_000_000
      ]},
     {PhxBackendBoilerplate.Cache.L2, []}
   ]

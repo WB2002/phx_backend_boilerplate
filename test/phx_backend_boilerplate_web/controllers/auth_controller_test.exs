@@ -32,6 +32,19 @@ defmodule PhxBackendBoilerplateWeb.AuthControllerTest do
       assert cookie.http_only
       assert cookie.path == "/api/auth"
     end
+
+    test "rejects passwords longer than 72 bytes", %{conn: conn} do
+      conn =
+        post(conn, ~p"/api/auth/register", %{
+          "email" => "longpass@example.com",
+          "password" => String.duplicate("a", 73)
+        })
+
+      assert %{"errors" => %{"detail" => "Unprocessable Entity", "fields" => fields}} =
+               json_response(conn, 422)
+
+      assert fields["password"] == ["should be at most 72 character(s)"]
+    end
   end
 
   describe "login" do
@@ -57,6 +70,18 @@ defmodule PhxBackendBoilerplateWeb.AuthControllerTest do
         post(conn, ~p"/api/auth/login", %{
           "email" => "auth@example.com",
           "password" => "wrong-password"
+        })
+
+      assert json_response(conn, 401) == %{
+               "errors" => %{"detail" => "Invalid email or password"}
+             }
+    end
+
+    test "rejects oversized passwords with the same error", %{conn: conn} do
+      conn =
+        post(conn, ~p"/api/auth/login", %{
+          "email" => "auth@example.com",
+          "password" => String.duplicate("a", 73)
         })
 
       assert json_response(conn, 401) == %{
