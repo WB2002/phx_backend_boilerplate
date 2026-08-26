@@ -1,6 +1,8 @@
 defmodule PhxBackendBoilerplateWeb.Demo.CommentControllerTest do
   use PhxBackendBoilerplateWeb.ConnCase, async: false
 
+  alias PhxBackendBoilerplate.PubSub
+
   @valid_payload %{
     "title" => "<b>Hi</b>",
     "body" => "<p>ok</p><script>alert(1)</script>",
@@ -27,6 +29,20 @@ defmodule PhxBackendBoilerplateWeb.Demo.CommentControllerTest do
 
     assert body =~ "<p>ok</p>"
     refute body =~ "<script"
+  end
+
+  test "broadcasts comment_created on demo:lobby after success", %{conn: conn} do
+    :ok = PubSub.subscribe("demo:lobby")
+
+    conn = post(conn, ~p"/api/demo/comments", @valid_payload)
+    assert json_response(conn, 200)
+
+    assert_receive {PubSub, "demo:lobby",
+                    %{
+                      "event" => "comment_created",
+                      "title" => "Hi",
+                      "email" => "demo@example.com"
+                    }}
   end
 
   test "returns 422 with field errors when required fields are missing", %{conn: conn} do

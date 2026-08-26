@@ -1,6 +1,8 @@
 defmodule PhxBackendBoilerplateWeb.Demo.SessionControllerTest do
   use PhxBackendBoilerplateWeb.ConnCase, async: false
 
+  alias PhxBackendBoilerplateWeb.SocketAuth
+
   @valid_creds %{"email" => "demo@example.com", "password" => "password123"}
   @invalid_creds %{"email" => "demo@example.com", "password" => "wrong"}
 
@@ -9,15 +11,20 @@ defmodule PhxBackendBoilerplateWeb.Demo.SessionControllerTest do
     {:ok, conn: Map.put(conn, :remote_ip, ip)}
   end
 
-  test "logs in with valid demo credentials", %{conn: conn} do
+  test "logs in with valid demo credentials and a socket token", %{conn: conn} do
     conn = post(conn, ~p"/api/demo/login", @valid_creds)
 
     assert %{
              "data" => %{
                "message" => "Logged in",
-               "email" => "demo@example.com"
+               "email" => "demo@example.com",
+               "user_id" => "demo-user",
+               "socket_token" => socket_token
              }
            } = json_response(conn, 200)
+
+    assert {:ok, %{"sub" => "demo-user", "email" => "demo@example.com"}} =
+             SocketAuth.verify(socket_token)
   end
 
   test "rejects invalid credentials", %{conn: conn} do

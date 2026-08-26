@@ -150,7 +150,7 @@ The demo limiter uses `Static` with limit `2` so parallel curls can actually get
 
 ### Demo endpoints
 
-`POST /api/demo/login` — **5 attempts/minute per IP**:
+`POST /api/demo/login` — **5 attempts/minute per IP**. On success returns `user_id` and a `socket_token` for the websocket:
 
 ```bash
 curl -i -X POST http://localhost:4000/api/demo/login \
@@ -158,7 +158,7 @@ curl -i -X POST http://localhost:4000/api/demo/login \
   -d '{"email":"demo@example.com","password":"password123"}'
 ```
 
-Demo credentials: `demo@example.com` / `password123`.
+Demo credentials: `demo@example.com` / `password123`. Identity: `user_id` `demo-user`.
 
 `GET /api/demo/public` — public pipeline with guest minting; **5 requests/minute** across IP, guest_id, and fingerprint buckets:
 
@@ -179,7 +179,7 @@ curl -i "http://localhost:4000/api/demo/expensive?hold_ms=5000"
 
 Expect two `200` responses and one `503` with `{"errors":{"detail":"Service Unavailable"}}`.
 
-`POST /api/demo/comments` — request DTO validation + HTML sanitization (**60/min per IP**):
+`POST /api/demo/comments` — request DTO validation + HTML sanitization (**60/min per IP**). Successful creates also broadcast `comment_created` on PubSub topic `demo:lobby`:
 
 ```bash
 curl -i -X POST http://localhost:4000/api/demo/comments \
@@ -188,6 +188,65 @@ curl -i -X POST http://localhost:4000/api/demo/comments \
 ```
 
 Valid payloads return `200` with sanitized fields (`title` stripped of tags, `body` BasicHTML-scrubbed). Invalid payloads return `422` with `errors.fields`.
+
+### WebSockets, PubSub, and socket auth
+
+Reusable pieces:
+
+| Module | Role |
+| --- | --- |
+| `PhxBackendBoilerplate.PubSub` | `subscribe/1`, `unsubscribe/1`, `broadcast/2` — tagged messages `{PhxBackendBoilerplate.PubSub, topic, payload}` |
+| `PhxBackendBoilerplateWeb.SocketAuth` | `sign/1` / `verify/1` via `Phoenix.Token` (salt `"user socket"`, 24h) |
+| `PhxBackendBoilerplateWeb.UserSocket` | Mounted at `/socket`; requires connect param `token` |
+| `PhxBackendBoilerplateWeb.DemoChannel` | Topics under `demo:*` with join-time auth |
+
+**Connect-time auth:** the websocket closes unless `token` verifies. **Join-time auth:**
+
+| Topic | Rule |
+| --- | --- |
+| `demo:lobby` | Any authenticated socket |
+| `demo:user:{id}` | Only when `id` equals `socket.assigns.current_user_id` |
+| other `demo:*` | Rejected |
+
+```bash
+# 1. Mint a token
+TOKEN=$(curl -s -X POST http://localhost:4000/api/demo/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"demo@example.com","password":"password123"}' \
+  | jq -r '.data.socket_token')
+
+# 2. Connect (query string works for wscat; phoenix.js uses params: {token})
+#    ws://localhost:4000/socket/websocket?token=$TOKEN&vsn=2.0.0
+```
+
+Phoenix JS client:
+
+```javascript
+import {Socket} from "phoenix"
+
+const socket = new Socket("/socket", {params: {token: socketToken}})
+socket.connect()
+
+const channel = socket.channel("demo:lobby", {})
+channel.join()
+  .receive("ok", () => console.log("joined lobby"))
+  .receive("error", (resp) => console.log("join failed", resp))
+
+channel.on("comment_created", (payload) => console.log(payload))
+channel.push("ping", {hello: "world"})
+  .receive("ok", (resp) => console.log("pong", resp))
+```
+
+Domain → channel fan-out:
+
+```elixir
+PhxBackendBoilerplate.PubSub.broadcast("demo:lobby", %{
+  "event" => "comment_created",
+  "title" => "Hi"
+})
+```
+
+Use `PhxBackendBoilerplateWeb.Endpoint.broadcast/3` when you need Phoenix's built-in push to sockets already joined on a channel topic.
 
 ### Request DTOs, HTML sanitization, and injection hardening
 
