@@ -139,6 +139,44 @@ config :phx_backend_boilerplate, PhxBackendBoilerplate.Deadline, timeout: 15_000
 # ExternalService owns retry/circuit-breaker policy per integration client.
 config :phx_backend_boilerplate, PhxBackendBoilerplate.HTTP, receive_timeout: 15_000
 
+# CSP + companion security headers (strict for API; looser for /dev HTML UIs).
+config :phx_backend_boilerplate, PhxBackendBoilerplateWeb.Plugs.SecurityHeaders,
+  api_csp: "default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'",
+  dev_csp:
+    "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'self' ws: wss:; frame-ancestors 'none'"
+
+# CORS — origins overridden from CORS_ORIGINS in runtime.exs.
+config :phx_backend_boilerplate, :cors,
+  origins: [],
+  credentials: true,
+  methods: ["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  headers: [
+    "content-type",
+    "authorization",
+    "x-request-id",
+    "x-correlation-id",
+    "x-guest-id",
+    "x-device-fingerprint",
+    "x-user-id",
+    "x-request-timeout-ms"
+  ],
+  expose: [
+    "x-guest-id",
+    "x-correlation-id",
+    "retry-after",
+    "accept-ranges",
+    "content-range"
+  ],
+  max_age: 86_400
+
+# reCAPTCHA v3 — secret / skip / adapter from runtime.exs and env configs.
+config :phx_backend_boilerplate, PhxBackendBoilerplate.Recaptcha,
+  secret_key: nil,
+  min_score: 0.5,
+  skip: false,
+  adapter: PhxBackendBoilerplate.Recaptcha.Google,
+  siteverify_url: "https://www.google.com/recaptcha/api/siteverify"
+
 # Example integration — copy for real dependencies. base_url is required
 # by get_widget/1; override in runtime/test as needed.
 config :phx_backend_boilerplate, PhxBackendBoilerplate.Integrations.Example,

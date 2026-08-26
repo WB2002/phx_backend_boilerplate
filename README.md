@@ -5,6 +5,7 @@ To start your Phoenix server:
 * Run `docker compose up -d` to start Redis, Postgres, and ClamAV (required for rate limiting, the database, and virus scanning; Postgres is on host port `5433`, ClamAV on `3310`)
 * Optionally `docker compose --profile observability up -d` for LocalStack + OTel Collector + Jaeger (see Observability below)
 * Run `mix setup` to install and setup dependencies
+* Optionally enable the secrets-scanning git hook: `git config core.hooksPath .githooks` (requires [`gitleaks`](https://github.com/gitleaks/gitleaks): `brew install gitleaks`)
 * Start Phoenix endpoint with `mix phx.server` or inside IEx with `iex -S mix phx.server`
 
 Now you can visit [`localhost:4000`](http://localhost:4000) from your browser.
@@ -577,6 +578,66 @@ curl -H "Range: bytes=0-1023" -o part.bin \
 ClamAV starts with `docker compose up -d` (image runs under `platform: linux/amd64` for Apple Silicon). First boot can take a couple of minutes while virus definitions download. Tests use `Files.Scanner.Fake` (no daemon required). For a quick local smoke test without ClamAV: `CLAMAV_SKIP=true mix phx.server`.
 
 Allowed types (demo): PDF, PNG, JPEG, GIF, WEBP, TXT, CSV, ZIP — see `PhxBackendBoilerplate.Files` config.
+
+## Security headers, CORS, reCAPTCHA, and secrets scanning
+
+### CSP and security headers
+
+`PhxBackendBoilerplateWeb.Plugs.SecurityHeaders` runs on the endpoint for every response:
+
+| Path | CSP |
+| --- | --- |
+| API (default) | `default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'` |
+| `/dev/*` | Looser policy so LiveDashboard / FunWithFlags can load scripts and styles |
+
+Also sets `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: no-referrer`, and a restrictive `Permissions-Policy`. Override strings under `PhxBackendBoilerplateWeb.Plugs.SecurityHeaders` in config.
+
+### CORS
+
+[`cors_plug`](https://hexdocs.pm/cors_plug) is mounted on the endpoint before the router (so `OPTIONS` preflight never hits controllers). Origins are **exact** allowlist entries — never `"*"`.
+
+| Env | Meaning |
+| --- | --- |
+| `CORS_ORIGINS` | Comma-separated origins, e.g. `http://localhost:3000,https://app.example.com` |
+
+Defaults when unset: `http://localhost:3000` and `http://127.0.0.1:3000` in dev/test; **empty** (fail closed) in prod. Credentials are enabled for cookie-based guest IDs. Allowed request headers include `x-guest-id`, `x-device-fingerprint`, `x-correlation-id`, and `x-request-timeout-ms`.
+
+```bash
+curl -i -X OPTIONS http://localhost:4000/api/demo/public \
+  -H "Origin: http://localhost:3000" \
+  -H "Access-Control-Request-Method: GET"
+```
+
+### reCAPTCHA v3
+
+Server-side verify via `PhxBackendBoilerplate.Recaptcha` (Req → Google siteverify). The demo login pipeline requires a token:
+
+```bash
+# Dev defaults to RECAPTCHA_SKIP=true — curl without a token still works locally.
+curl -i -X POST http://localhost:4000/api/demo/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"demo@example.com","password":"password123","recaptcha_token":"<from grecaptcha.execute>"}'
+```
+
+| Env | Dev | Prod |
+| --- | --- | --- |
+| `RECAPTCHA_SECRET_KEY` | optional | **required** |
+| `RECAPTCHA_MIN_SCORE` | `0.5` | `0.5` |
+| `RECAPTCHA_SKIP` | default `true` | ignored (always verify) |
+
+The SPA obtains a token with `grecaptcha.execute(siteKey, {action: 'login'})` and sends it as `recaptcha_token` (or form field `g-recaptcha-response`). Failures return `403` with `{"errors":{"detail":"reCAPTCHA verification failed"}}`. Opt other routes in with `pipe_through :recaptcha`.
+
+### Gitleaks (pre-commit secrets scan)
+
+Native git hook (no pre-commit framework):
+
+```bash
+# One-time per clone
+git config core.hooksPath .githooks
+brew install gitleaks   # if needed
+```
+
+The hook runs `gitleaks protect --staged` using [`.gitleaks.toml`](.gitleaks.toml). `mix precommit` also runs `mix gitleaks` (full-tree detect). See [`.env.example`](.env.example) for env var names; real `.env` files are gitignored.
 
 ## Learn more
 

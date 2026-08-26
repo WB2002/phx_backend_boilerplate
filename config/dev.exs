@@ -69,3 +69,7 @@ config :phoenix, :plug_init_mode, :runtime
 
 # Disable swoosh api client as it is only required for production adapters.
 config :swoosh, :api_client, false
+
+# Dev CORS defaults (overridden by CORS_ORIGINS in runtime.exs when set).
+config :phx_backend_boilerplate, :cors,
+  origins: ["http://localhost:3000", "http://127.0.0.1:3000"]

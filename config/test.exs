@@ -55,6 +55,19 @@ config :phx_backend_boilerplate, PhxBackendBoilerplate.Files,
 # Fast timeouts for outbound HTTP tests; plug stubs avoid the network.
 config :phx_backend_boilerplate, PhxBackendBoilerplate.HTTP, receive_timeout: 1_000
 
+# reCAPTCHA: Fake adapter; skip off so plug/controller tests exercise verify.
+config :phx_backend_boilerplate, PhxBackendBoilerplate.Recaptcha,
+  skip: false,
+  adapter: PhxBackendBoilerplate.Recaptcha.Fake,
+  secret_key: "test-secret",
+  min_score: 0.5
+
+config :phx_backend_boilerplate, PhxBackendBoilerplate.Recaptcha.Fake, result: :ok
+
+# CORS allowlist for preflight tests.
+config :phx_backend_boilerplate, :cors,
+  origins: ["http://localhost:3000", "http://127.0.0.1:3000"]
+
 config :phx_backend_boilerplate, PhxBackendBoilerplate.Integrations.Example,
   base_url: "https://example.test",
   api_token: "test-token"

@@ -38,3 +38,8 @@ phx_backend_boilerplate-*.tar
 npm-debug.log
 /assets/node_modules/
 
+# Local env files (keep .env.example tracked).
+.env
+.env.*
+!.env.example
+

@@ -44,6 +44,7 @@ defmodule PhxBackendBoilerplateWeb.Endpoint do
 
   plug Plug.RequestId
   plug PhxBackendBoilerplateWeb.Plugs.RequestContext
+  plug PhxBackendBoilerplateWeb.Plugs.SecurityHeaders
   plug Plug.Telemetry, event_prefix: [:phoenix, :endpoint]
 
   plug Plug.Parsers,
@@ -55,5 +56,40 @@ defmodule PhxBackendBoilerplateWeb.Endpoint do
   plug Plug.MethodOverride
   plug Plug.Head
   plug Plug.Session, @session_options
+
+  # CORS must run before the router so OPTIONS preflight never hits controllers.
+  # Origins are resolved at request time from `:cors` config (see runtime.exs).
+  plug CORSPlug,
+    origin: &__MODULE__.cors_origins/0,
+    credentials: true,
+    max_age: 86_400,
+    methods: ["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    headers: [
+      "Authorization",
+      "Content-Type",
+      "Accept",
+      "Origin",
+      "X-Request-Id",
+      "X-Correlation-Id",
+      "X-Guest-Id",
+      "X-Device-Fingerprint",
+      "X-User-Id",
+      "X-Request-Timeout-Ms"
+    ],
+    expose: [
+      "x-guest-id",
+      "x-correlation-id",
+      "retry-after",
+      "accept-ranges",
+      "content-range"
+    ]
+
   plug PhxBackendBoilerplateWeb.Router
+
+  @doc false
+  def cors_origins do
+    :phx_backend_boilerplate
+    |> Application.get_env(:cors, [])
+    |> Keyword.get(:origins, [])
+  end
 end

@@ -45,13 +45,90 @@ config :phx_backend_boilerplate, PhxBackendBoilerplate.RateLimit, url: redis_url
 config :phx_backend_boilerplate, PhxBackendBoilerplate.Cache.L2, conn_opts: [url: redis_url]
 
 # ---------------------------------------------------------------------------
-# Observability (CloudWatch Logs/Metrics + OpenTelemetry → X-Ray via collector)
+# CORS (comma-separated exact origins; never "*")
+# ---------------------------------------------------------------------------
+
+cors_origins =
+  case System.get_env("CORS_ORIGINS") do
+    nil ->
+      case config_env() do
+        :prod -> []
+        :test -> ["http://localhost:3000", "http://127.0.0.1:3000"]
+        _ -> ["http://localhost:3000", "http://127.0.0.1:3000"]
+      end
+
+    "" ->
+      []
+
+    raw ->
+      raw
+      |> String.split(",", trim: true)
+      |> Enum.map(&String.trim/1)
+      |> Enum.reject(&(&1 == ""))
+  end
+
+config :phx_backend_boilerplate, :cors, origins: cors_origins
+
+# ---------------------------------------------------------------------------
+# reCAPTCHA v3
 # ---------------------------------------------------------------------------
 
 truthy? = fn
   value when value in ~w(true 1 yes on) -> true
   _ -> false
 end
+
+recaptcha_skip? =
+  case config_env() do
+    :prod ->
+      false
+
+    :test ->
+      false
+
+    _ ->
+      # Dev defaults to skip so curl demos work without a Google key.
+      case System.get_env("RECAPTCHA_SKIP") do
+        nil -> true
+        value -> truthy?.(value)
+      end
+  end
+
+recaptcha_secret =
+  case {config_env(), System.get_env("RECAPTCHA_SECRET_KEY")} do
+    {:prod, nil} ->
+      raise """
+      environment variable RECAPTCHA_SECRET_KEY is missing.
+      Set it to your Google reCAPTCHA v3 secret.
+      """
+
+    {_, nil} ->
+      nil
+
+    {_, key} ->
+      key
+  end
+
+recaptcha_min_score =
+  case System.get_env("RECAPTCHA_MIN_SCORE") do
+    nil ->
+      0.5
+
+    raw ->
+      case Float.parse(raw) do
+        {score, _} -> score
+        :error -> 0.5
+      end
+  end
+
+config :phx_backend_boilerplate, PhxBackendBoilerplate.Recaptcha,
+  secret_key: recaptcha_secret,
+  min_score: recaptcha_min_score,
+  skip: recaptcha_skip?
+
+# ---------------------------------------------------------------------------
+# Observability (CloudWatch Logs/Metrics + OpenTelemetry → X-Ray via collector)
+# ---------------------------------------------------------------------------
 
 aws_region = System.get_env("AWS_REGION") || "us-east-1"
 

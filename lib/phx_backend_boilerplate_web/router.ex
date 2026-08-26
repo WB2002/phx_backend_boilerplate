@@ -28,6 +28,10 @@ defmodule PhxBackendBoilerplateWeb.Router do
       by: [:ip]
   end
 
+  pipeline :recaptcha do
+    plug PhxBackendBoilerplateWeb.Plugs.Recaptcha
+  end
+
   pipeline :rate_limit_demo_comments do
     plug PhxBackendBoilerplateWeb.Plugs.RateLimit,
       id: "demo_comments",
@@ -109,8 +113,7 @@ defmodule PhxBackendBoilerplateWeb.Router do
 
   scope "/api", PhxBackendBoilerplateWeb do
     scope "/demo" do
-      pipe_through :api
-      pipe_through :rate_limit_demo_login
+      pipe_through [:api, :rate_limit_demo_login, :recaptcha]
 
       post "/login", Demo.SessionController, :create
     end

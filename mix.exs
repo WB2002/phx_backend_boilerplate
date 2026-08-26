@@ -97,6 +97,7 @@ defmodule PhxBackendBoilerplate.MixProject do
       {:html_sanitize_ex, "~> 1.4"},
       {:dns_cluster, "~> 0.2.0"},
       {:bandit, "~> 1.5"},
+      {:cors_plug, "~> 3.0"},
       {:hammer_backend_redis, "~> 7.0"},
       {:regulator, "~> 0.6"},
       {:nebulex, "~> 3.0"},
@@ -131,7 +132,13 @@ defmodule PhxBackendBoilerplate.MixProject do
         "esbuild phx_backend_boilerplate --minify",
         "phx.digest"
       ],
-      precommit: ["compile --warnings-as-errors", "deps.unlock --unused", "format", "test"]
+      precommit: [
+        "compile --warnings-as-errors",
+        "deps.unlock --unused",
+        "format",
+        "gitleaks",
+        "test"
+      ]
     ]
   end
 end

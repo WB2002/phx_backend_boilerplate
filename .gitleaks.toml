@@ -1,0 +1,33 @@
+# Gitleaks configuration — extends default rules.
+# See https://github.com/gitleaks/gitleaks
+
+title = "phx_backend_boilerplate"
+
+[extend]
+useDefault = true
+
+# Demo credentials in README / SessionController are intentional examples,
+# not live secrets. Do not allowlist real API key / AWS / JWT patterns.
+[[allowlists]]
+description = "Demo login password used only in docs and demo controller"
+paths = [
+  '''README\.md''',
+  '''lib/phx_backend_boilerplate_web/controllers/demo/session_controller\.ex''',
+  '''test/phx_backend_boilerplate_web/controllers/demo/session_controller_test\.exs'''
+]
+regexes = [
+  '''password123'''
+]
+
+# Phoenix generates local-only secret_key_base values for dev/test.
+# Production secret_key_base comes from SECRET_KEY_BASE env (runtime.exs).
+[[allowlists]]
+description = "Phoenix generated secret_key_base for non-prod environments"
+paths = [
+  '''config/dev\.exs''',
+  '''config/test\.exs'''
+]
+regexTarget = "match"
+regexes = [
+  '''secret_key_base:'''
+]
