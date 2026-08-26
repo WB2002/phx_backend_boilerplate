@@ -224,6 +224,16 @@ config :fun_with_flags, :cache_bust_notifications,
   adapter: FunWithFlags.Notifications.PhoenixPubSub,
   client: PhxBackendBoilerplate.PubSub
 
+# Oban: Postgres-backed background jobs (queues + pruning + stuck-job rescue).
+# Supervisor is started in PhxBackendBoilerplate.Application after Repo.
+config :phx_backend_boilerplate, Oban,
+  repo: PhxBackendBoilerplate.Repo,
+  queues: [default: 10],
+  plugins: [
+    {Oban.Plugins.Pruner, max_age: 60 * 60 * 24 * 7},
+    {Oban.Plugins.Lifeline, rescue_after: :timer.minutes(30)}
+  ]
+
 # Import environment specific config. This must remain at the bottom
 # of this file so it overrides the configuration defined above.
 import_config "#{config_env()}.exs"

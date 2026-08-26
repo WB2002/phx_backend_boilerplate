@@ -90,6 +90,9 @@ config :phx_backend_boilerplate, PhxBackendBoilerplate.SWR,
 # Disable ETS cache so SQL sandbox rollback is not shadowed by stale flag values.
 config :fun_with_flags, :cache, enabled: false
 
+# Oban: no queue execution in tests; use assert_enqueued / perform_job.
+config :phx_backend_boilerplate, Oban, testing: :manual
+
 # Fast Argon2 for tests only — never use these costs in production.
 config :argon2_elixir,
   t_cost: 1,

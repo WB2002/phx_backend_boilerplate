@@ -13,6 +13,7 @@ defmodule PhxBackendBoilerplate.Application do
         {Finch, name: PhxBackendBoilerplate.Finch},
         PhxBackendBoilerplateWeb.Telemetry,
         PhxBackendBoilerplate.Repo,
+        {Oban, Application.fetch_env!(:phx_backend_boilerplate, Oban)},
         {DNSCluster,
          query: Application.get_env(:phx_backend_boilerplate, :dns_cluster_query) || :ignore},
         {Phoenix.PubSub, name: PhxBackendBoilerplate.PubSub},

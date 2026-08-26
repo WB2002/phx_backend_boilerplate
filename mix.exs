@@ -108,7 +108,10 @@ defmodule PhxBackendBoilerplate.MixProject do
       {:nebulex_redis_adapter, "~> 3.0"},
       {:nebulex_distributed, "~> 3.0"},
       {:fun_with_flags, "~> 1.13", runtime: false},
-      {:fun_with_flags_ui, "~> 1.1", only: :dev, runtime: false}
+      {:fun_with_flags_ui, "~> 1.1", only: :dev, runtime: false},
+      {:oban, "~> 2.19"},
+      # Available at compile time in all envs (router `import`); mount stays behind :dev_routes.
+      {:oban_web, "~> 2.11"}
     ]
   end
 

@@ -190,6 +190,17 @@ curl -i -X POST http://localhost:4000/api/demo/comments \
 
 Valid payloads return `200` with sanitized fields (`title` stripped of tags, `body` BasicHTML-scrubbed). Invalid payloads return `422` with `errors.fields`.
 
+`POST /api/demo/jobs` — enqueue an Oban demo job (**60/min per IP**). Returns **202** with job metadata immediately (does not wait for `perform/1`):
+
+```bash
+curl -i -X POST http://localhost:4000/api/demo/jobs \
+  -H "Content-Type: application/json" \
+  -H "X-Correlation-Id: demo-job-1" \
+  -d '{"message":"hello","work_ms":500}'
+```
+
+Inspect queued/completed jobs in the Oban Web dashboard at [`/dev/oban`](http://localhost:4000/dev/oban) (dev only).
+
 ### WebSockets, PubSub, and socket auth
 
 Reusable pieces:
@@ -335,6 +346,53 @@ curl -i http://localhost:4000/api/demo/flags/beta \
 ```
 
 Group and %-of-actors gates are supported by the library; add them when you need rollouts beyond these two demos.
+
+### Jobs (Oban)
+
+[Oban](https://hexdocs.pm/oban) runs background jobs in Postgres (`oban_jobs`) with retries, queues, and pruning. Prefer `PhxBackendBoilerplate.Jobs` over calling `Oban.insert/1` from controllers.
+
+```elixir
+config :phx_backend_boilerplate, Oban,
+  repo: PhxBackendBoilerplate.Repo,
+  queues: [default: 10],
+  plugins: [
+    {Oban.Plugins.Pruner, max_age: 60 * 60 * 24 * 7},
+    {Oban.Plugins.Lifeline, rescue_after: :timer.minutes(30)}
+  ]
+```
+
+`{Oban, ...}` starts in `Application` **after** Repo. In test, `testing: :manual` disables queues/plugins so you assert with `assert_enqueued` / `perform_job` (`Oban.Testing`).
+
+Demo worker: `PhxBackendBoilerplate.Workers.DemoJob` (queue `:default`). Enqueue via the context or IEx:
+
+```elixir
+PhxBackendBoilerplate.Jobs.enqueue_demo(%{"message" => "hello", "work_ms" => 0})
+
+# Or define your own:
+defmodule MyApp.Workers.SendEmail do
+  use Oban.Worker, queue: :default, max_attempts: 3
+
+  @impl Oban.Worker
+  def perform(%Oban.Job{args: %{"to" => to}}) do
+    # ...
+    :ok
+  end
+end
+
+%{to: "user@example.com"}
+|> MyApp.Workers.SendEmail.new()
+|> Oban.insert()
+```
+
+Optional cron (not enabled by default) — add `{Oban.Plugins.Cron, crontab: [{"* * * * *", MyApp.Workers.Heartbeat}]}` to the Oban `:plugins` list when you need scheduled jobs.
+
+Dashboard: [`/dev/oban`](http://localhost:4000/dev/oban) (dev only, same auth story as LiveDashboard — put BasicAuth or an admin gate before enabling in production).
+
+```bash
+curl -i -X POST http://localhost:4000/api/demo/jobs \
+  -H "Content-Type: application/json" \
+  -d '{"message":"hello","work_ms":0}'
+```
 
 ### SWR cache (Nebulex + coalescing + stampede protection)
 

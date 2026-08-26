@@ -80,6 +80,14 @@ defmodule PhxBackendBoilerplateWeb.Router do
       by: [:ip]
   end
 
+  pipeline :rate_limit_demo_jobs do
+    plug PhxBackendBoilerplateWeb.Plugs.RateLimit,
+      id: "demo_jobs",
+      scale: :timer.minutes(1),
+      limit: 60,
+      by: [:ip]
+  end
+
   pipeline :rate_limit_demo_uploads do
     plug PhxBackendBoilerplateWeb.Plugs.RateLimit,
       id: "demo_uploads",
@@ -188,6 +196,12 @@ defmodule PhxBackendBoilerplateWeb.Router do
 
       get "/beta", Demo.FlagsController, :beta
     end
+
+    scope "/demo" do
+      pipe_through [:api, :rate_limit_demo_jobs]
+
+      post "/jobs", Demo.JobsController, :create
+    end
   end
 
   scope "/api" do
@@ -196,14 +210,15 @@ defmodule PhxBackendBoilerplateWeb.Router do
     forward "/graphql", Absinthe.Plug, schema: PhxBackendBoilerplateWeb.Graphql.Schema
   end
 
-  # Enable LiveDashboard, FunWithFlags UI, GraphiQL, and Swoosh mailbox preview in development
+  # Enable LiveDashboard, Oban Web, FunWithFlags UI, GraphiQL, and Swoosh mailbox preview in development
   if Application.compile_env(:phx_backend_boilerplate, :dev_routes) do
-    # If you want to use the LiveDashboard in production, you should put
+    # If you want to use the LiveDashboard / Oban Web in production, you should put
     # it behind authentication and allow only admins to access it.
     # If your application does not have an admins-only section yet,
     # you can use Plug.BasicAuth to set up some basic authentication
     # as long as you are also using SSL (which you should anyway).
     import Phoenix.LiveDashboard.Router
+    import Oban.Web.Router
 
     pipeline :dev_flags_ui do
       plug :accepts, ["html"]
@@ -221,6 +236,7 @@ defmodule PhxBackendBoilerplateWeb.Router do
       pipe_through [:fetch_session, :protect_from_forgery]
 
       live_dashboard "/dashboard", metrics: PhxBackendBoilerplateWeb.Telemetry
+      oban_dashboard("/oban")
       forward "/mailbox", Plug.Swoosh.MailboxPreview
     end
 
