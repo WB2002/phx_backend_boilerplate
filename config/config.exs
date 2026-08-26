@@ -129,6 +129,17 @@ config :phx_backend_boilerplate, PhxBackendBoilerplate.SWR,
   lock_ttl: 8_000,
   early_refresh_window: 5_000
 
+# Feature flags (FunWithFlags): Postgres persistence + Phoenix.PubSub cache bust.
+# Supervisor is started in PhxBackendBoilerplate.Application after PubSub.
+config :fun_with_flags, :persistence,
+  adapter: FunWithFlags.Store.Persistent.Ecto,
+  repo: PhxBackendBoilerplate.Repo
+
+config :fun_with_flags, :cache_bust_notifications,
+  enabled: true,
+  adapter: FunWithFlags.Notifications.PhoenixPubSub,
+  client: PhxBackendBoilerplate.PubSub
+
 # Import environment specific config. This must remain at the bottom
 # of this file so it overrides the configuration defined above.
 import_config "#{config_env()}.exs"

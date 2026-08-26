@@ -16,6 +16,7 @@ defmodule PhxBackendBoilerplate.Application do
         {DNSCluster,
          query: Application.get_env(:phx_backend_boilerplate, :dns_cluster_query) || :ignore},
         {Phoenix.PubSub, name: PhxBackendBoilerplate.PubSub},
+        FunWithFlags.Supervisor,
         {PhxBackendBoilerplate.RateLimit,
          Application.fetch_env!(:phx_backend_boilerplate, PhxBackendBoilerplate.RateLimit)},
         PhxBackendBoilerplate.LoadShed,

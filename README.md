@@ -179,6 +179,52 @@ curl -i "http://localhost:4000/api/demo/expensive?hold_ms=5000"
 
 Expect two `200` responses and one `503` with `{"errors":{"detail":"Service Unavailable"}}`.
 
+### Feature flags (FunWithFlags)
+
+Flags persist in Postgres (`fun_with_flags_toggles`), cache in ETS, and sync across nodes via `Phoenix.PubSub`. Prefer `PhxBackendBoilerplate.Flags` over calling `FunWithFlags` from controllers.
+
+```elixir
+config :fun_with_flags, :persistence,
+  adapter: FunWithFlags.Store.Persistent.Ecto,
+  repo: PhxBackendBoilerplate.Repo
+
+config :fun_with_flags, :cache_bust_notifications,
+  enabled: true,
+  adapter: FunWithFlags.Notifications.PhoenixPubSub,
+  client: PhxBackendBoilerplate.PubSub
+```
+
+`FunWithFlags.Supervisor` starts in `Application` **after** PubSub (`runtime: false` on the dep avoids a PubSub race).
+
+Demo flags:
+
+| Flag | Gate | Demo route |
+| --- | --- | --- |
+| `:demo_preview` | Global boolean | `GET /api/demo/flags/preview` → `404` when off, `200` when on |
+| `:demo_beta` | Per-guest actor | `GET /api/demo/flags/beta` → `403` when off, `200` when on for that guest |
+
+`mix ecto.setup` / seeds enable `:demo_preview`. Toggle in IEx or the HTML UI at [`/dev/feature-flags`](http://localhost:4000/dev/feature-flags) (dev only, same as LiveDashboard).
+
+```elixir
+# IEx
+FunWithFlags.enable(:demo_preview)
+FunWithFlags.disable(:demo_preview)
+
+guest = PhxBackendBoilerplate.Flags.guest("your-guest-uuid")
+FunWithFlags.enable(:demo_beta, for_actor: guest)
+```
+
+```bash
+# Global kill-switch / unreleased endpoint
+curl -i http://localhost:4000/api/demo/flags/preview
+
+# Per-guest beta (mint or pass X-Guest-Id)
+curl -i http://localhost:4000/api/demo/flags/beta \
+  -H "X-Guest-Id: 11111111-1111-1111-1111-111111111111"
+```
+
+Group and %-of-actors gates are supported by the library; add them when you need rollouts beyond these two demos.
+
 ### SWR cache (Nebulex + coalescing + stampede protection)
 
 `PhxBackendBoilerplate.SWR.fetch/3` wraps expensive loaders with:
@@ -314,3 +360,4 @@ For long-lived PubSub streams, keep the `receive`/`chunk` loop in the connection
 * Source: https://github.com/phoenixframework/phoenix
 * Regulator: https://hexdocs.pm/regulator
 * Nebulex: https://hexdocs.pm/nebulex
+* FunWithFlags: https://hexdocs.pm/fun_with_flags

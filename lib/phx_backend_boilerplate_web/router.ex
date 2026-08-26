@@ -60,6 +60,14 @@ defmodule PhxBackendBoilerplateWeb.Router do
       by: [:ip]
   end
 
+  pipeline :rate_limit_demo_flags do
+    plug PhxBackendBoilerplateWeb.Plugs.RateLimit,
+      id: "demo_flags",
+      scale: :timer.minutes(1),
+      limit: 60,
+      by: [:ip]
+  end
+
   pipeline :load_shed_demo_expensive do
     plug PhxBackendBoilerplateWeb.Plugs.LoadShed, regulator: :demo_expensive
   end
@@ -97,9 +105,21 @@ defmodule PhxBackendBoilerplateWeb.Router do
       get "/stream/chunks", Demo.StreamController, :chunks
       get "/stream/sse", Demo.StreamController, :sse
     end
+
+    scope "/demo/flags" do
+      pipe_through [:api, :rate_limit_demo_flags]
+
+      get "/preview", Demo.FlagsController, :preview
+    end
+
+    scope "/demo/flags" do
+      pipe_through [:api_public, :rate_limit_demo_flags]
+
+      get "/beta", Demo.FlagsController, :beta
+    end
   end
 
-  # Enable LiveDashboard and Swoosh mailbox preview in development
+  # Enable LiveDashboard, FunWithFlags UI, and Swoosh mailbox preview in development
   if Application.compile_env(:phx_backend_boilerplate, :dev_routes) do
     # If you want to use the LiveDashboard in production, you should put
     # it behind authentication and allow only admins to access it.
@@ -108,11 +128,23 @@ defmodule PhxBackendBoilerplateWeb.Router do
     # as long as you are also using SSL (which you should anyway).
     import Phoenix.LiveDashboard.Router
 
+    pipeline :dev_flags_ui do
+      plug :accepts, ["html"]
+      plug :fetch_session
+      plug :put_secure_browser_headers
+    end
+
     scope "/dev" do
       pipe_through [:fetch_session, :protect_from_forgery]
 
       live_dashboard "/dashboard", metrics: PhxBackendBoilerplateWeb.Telemetry
       forward "/mailbox", Plug.Swoosh.MailboxPreview
+    end
+
+    # FunWithFlags.UI has its own CSRF; do not pipe through protect_from_forgery.
+    scope "/dev/feature-flags" do
+      pipe_through :dev_flags_ui
+      forward "/", FunWithFlags.UI.Router, namespace: "dev/feature-flags"
     end
   end
 end

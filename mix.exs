@@ -13,7 +13,10 @@ defmodule PhxBackendBoilerplate.MixProject do
       listeners: [Phoenix.CodeReloader],
       releases: [
         phx_backend_boilerplate: [
-          applications: [opentelemetry: :temporary]
+          applications: [
+            opentelemetry: :temporary,
+            fun_with_flags: :load
+          ]
         ]
       ]
     ]
@@ -92,7 +95,9 @@ defmodule PhxBackendBoilerplate.MixProject do
       {:nebulex, "~> 3.0"},
       {:nebulex_local, "~> 3.0"},
       {:nebulex_redis_adapter, "~> 3.0"},
-      {:nebulex_distributed, "~> 3.0"}
+      {:nebulex_distributed, "~> 3.0"},
+      {:fun_with_flags, "~> 1.13", runtime: false},
+      {:fun_with_flags_ui, "~> 1.1", only: :dev, runtime: false}
     ]
   end
 

@@ -64,3 +64,6 @@ config :phx_backend_boilerplate, PhxBackendBoilerplate.SWR,
   l2_hard_ttl: 5_000,
   lock_ttl: 2_000,
   early_refresh_window: 100
+
+# Disable ETS cache so SQL sandbox rollback is not shadowed by stale flag values.
+config :fun_with_flags, :cache, enabled: false
