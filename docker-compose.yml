@@ -29,6 +29,45 @@ services:
       timeout: 3s
       retries: 5
 
+  # Community LocalStack: CloudWatch Logs + Metrics (X-Ray is Pro-only — use Jaeger).
+  localstack:
+    profiles: ["observability"]
+    image: localstack/localstack:4.3
+    ports:
+      - "4566:4566"
+    environment:
+      SERVICES: logs,cloudwatch
+      DEBUG: "0"
+      AWS_DEFAULT_REGION: us-east-1
+    volumes:
+      - localstack_data:/var/lib/localstack
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4566/_localstack/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  jaeger:
+    profiles: ["observability"]
+    image: jaegertracing/all-in-one:1.66.0
+    ports:
+      - "16686:16686"
+    environment:
+      COLLECTOR_OTLP_ENABLED: "true"
+
+  otel-collector:
+    profiles: ["observability"]
+    image: otel/opentelemetry-collector-contrib:0.120.0
+    command: ["--config=/etc/otel-collector-config.yaml"]
+    volumes:
+      - ./config/otel-collector-config.yaml:/etc/otel-collector-config.yaml:ro
+    ports:
+      - "4317:4317"
+      - "4318:4318"
+    depends_on:
+      - jaeger
+
 volumes:
   redis_data:
   postgres_data:
+  localstack_data:

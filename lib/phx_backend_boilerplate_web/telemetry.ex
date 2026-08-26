@@ -8,15 +8,31 @@ defmodule PhxBackendBoilerplateWeb.Telemetry do
 
   @impl true
   def init(_arg) do
-    children = [
-      # Telemetry poller will execute the given period measurements
-      # every 10_000ms. Learn more here: https://telemetry-metrics.hexdocs.pm
-      {:telemetry_poller, measurements: periodic_measurements(), period: 10_000}
-      # Add reporters as children of your supervision tree.
-      # {Telemetry.Metrics.ConsoleReporter, metrics: metrics()}
-    ]
+    children =
+      [
+        # Telemetry poller will execute the given period measurements
+        # every 10_000ms. Learn more here: https://telemetry-metrics.hexdocs.pm
+        {:telemetry_poller, measurements: periodic_measurements(), period: 10_000}
+      ] ++ cloudwatch_reporter_children()
 
     Supervisor.init(children, strategy: :one_for_one)
+  end
+
+  defp cloudwatch_reporter_children do
+    if PhxBackendBoilerplate.Observability.cloudwatch_metrics_enabled?() do
+      opts = PhxBackendBoilerplate.Observability.cloudwatch_metrics_config()
+
+      [
+        {TelemetryMetricsCloudwatch,
+         [
+           metrics: metrics(),
+           namespace: Keyword.get(opts, :namespace, "PhxBackendBoilerplate"),
+           push_interval: Keyword.get(opts, :push_interval, 60_000)
+         ]}
+      ]
+    else
+      []
+    end
   end
 
   def metrics do

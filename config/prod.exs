@@ -29,5 +29,15 @@ config :swoosh, local: false
 # Do not print debug messages in production
 config :logger, level: :info
 
+config :logger, :default_handler,
+  formatter:
+    {LoggerJSON.Formatters.Basic,
+     metadata: [:request_id, :otel_trace_id, :otel_span_id, :otel_trace_flags]}
+
+# X-Ray-compatible trace IDs and header propagation (OTLP → ADOT → X-Ray).
+config :opentelemetry,
+  id_generator: :opentelemetry_xray_id_generator,
+  propagators: [:opentelemetry_xray_propagator, :baggage]
+
 # Runtime production configuration, including reading
 # of environment variables, is done on config/runtime.exs.

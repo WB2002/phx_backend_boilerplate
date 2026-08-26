@@ -10,7 +10,12 @@ defmodule PhxBackendBoilerplate.MixProject do
       start_permanent: Mix.env() == :prod,
       aliases: aliases(),
       deps: deps(),
-      listeners: [Phoenix.CodeReloader]
+      listeners: [Phoenix.CodeReloader],
+      releases: [
+        phx_backend_boilerplate: [
+          applications: [opentelemetry: :temporary]
+        ]
+      ]
     ]
   end
 
@@ -65,6 +70,19 @@ defmodule PhxBackendBoilerplate.MixProject do
       {:external_service, "~> 2.8"},
       {:telemetry_metrics, "~> 1.0"},
       {:telemetry_poller, "~> 1.0"},
+      {:telemetry_metrics_cloudwatch, "~> 1.1"},
+      {:ex_aws, "~> 2.5"},
+      {:ex_aws_cloudwatch, "~> 2.0"},
+      {:ex_aws_cloudwatch_logs, "~> 1.0"},
+      {:logger_json, "~> 7.0"},
+      {:opentelemetry, "~> 1.5"},
+      {:opentelemetry_api, "~> 1.4"},
+      {:opentelemetry_exporter, "~> 1.8"},
+      {:opentelemetry_phoenix, "~> 2.0"},
+      {:opentelemetry_bandit, "~> 0.3"},
+      {:opentelemetry_ecto, "~> 1.2"},
+      {:opentelemetry_xray, "~> 0.7"},
+      {:opentelemetry_logger_metadata, "~> 0.2"},
       {:gettext, "~> 1.0"},
       {:jason, "~> 1.2"},
       {:dns_cluster, "~> 0.2.0"},

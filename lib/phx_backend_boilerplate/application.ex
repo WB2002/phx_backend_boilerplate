@@ -7,28 +7,38 @@ defmodule PhxBackendBoilerplate.Application do
 
   @impl true
   def start(_type, _args) do
-    children = [
-      PhxBackendBoilerplateWeb.Telemetry,
-      PhxBackendBoilerplate.Repo,
-      {DNSCluster,
-       query: Application.get_env(:phx_backend_boilerplate, :dns_cluster_query) || :ignore},
-      {Phoenix.PubSub, name: PhxBackendBoilerplate.PubSub},
-      {PhxBackendBoilerplate.RateLimit,
-       Application.fetch_env!(:phx_backend_boilerplate, PhxBackendBoilerplate.RateLimit)},
-      PhxBackendBoilerplate.LoadShed,
-      {PhxBackendBoilerplate.Cache, []},
-      PhxBackendBoilerplate.Cache.Coalescer,
-      {Task.Supervisor, name: PhxBackendBoilerplate.Cache.TaskSupervisor},
-      {Finch, name: PhxBackendBoilerplate.Finch},
-      PhxBackendBoilerplate.Integrations.Example,
-      # Start to serve requests, typically the last entry
-      PhxBackendBoilerplateWeb.Endpoint
-    ]
+    # Finch must start before ExAws/CloudWatch exporters use it.
+    children =
+      [
+        {Finch, name: PhxBackendBoilerplate.Finch},
+        PhxBackendBoilerplateWeb.Telemetry,
+        PhxBackendBoilerplate.Repo,
+        {DNSCluster,
+         query: Application.get_env(:phx_backend_boilerplate, :dns_cluster_query) || :ignore},
+        {Phoenix.PubSub, name: PhxBackendBoilerplate.PubSub},
+        {PhxBackendBoilerplate.RateLimit,
+         Application.fetch_env!(:phx_backend_boilerplate, PhxBackendBoilerplate.RateLimit)},
+        PhxBackendBoilerplate.LoadShed,
+        {PhxBackendBoilerplate.Cache, []},
+        PhxBackendBoilerplate.Cache.Coalescer,
+        {Task.Supervisor, name: PhxBackendBoilerplate.Cache.TaskSupervisor},
+        PhxBackendBoilerplate.Integrations.Example,
+        # Start to serve requests, typically the last entry
+        PhxBackendBoilerplateWeb.Endpoint
+      ]
 
-    # See https://elixir.hexdocs.pm/Supervisor.html
-    # for other strategies and supported options
+    :ok = PhxBackendBoilerplate.Observability.setup_tracing!()
+
     opts = [strategy: :one_for_one, name: PhxBackendBoilerplate.Supervisor]
-    Supervisor.start_link(children, opts)
+
+    case Supervisor.start_link(children, opts) do
+      {:ok, pid} ->
+        :ok = PhxBackendBoilerplate.Observability.attach_cloudwatch_logs!()
+        {:ok, pid}
+
+      other ->
+        other
+    end
   end
 
   # Tell Phoenix to update the endpoint configuration

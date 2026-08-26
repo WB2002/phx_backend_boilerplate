@@ -44,6 +44,106 @@ config :phx_backend_boilerplate, PhxBackendBoilerplate.RateLimit, url: redis_url
 # Nebulex L2 (Redis). Same REDIS_URL as Hammer; Hammer uses its own key prefix.
 config :phx_backend_boilerplate, PhxBackendBoilerplate.Cache.L2, conn_opts: [url: redis_url]
 
+# ---------------------------------------------------------------------------
+# Observability (CloudWatch Logs/Metrics + OpenTelemetry → X-Ray via collector)
+# ---------------------------------------------------------------------------
+
+truthy? = fn
+  value when value in ~w(true 1 yes on) -> true
+  _ -> false
+end
+
+aws_region = System.get_env("AWS_REGION") || "us-east-1"
+
+config :ex_aws,
+  region: aws_region,
+  access_key_id: System.get_env("AWS_ACCESS_KEY_ID") || "test",
+  secret_access_key: System.get_env("AWS_SECRET_ACCESS_KEY") || "test"
+
+# Point ExAws at LocalStack (or any custom endpoint) when AWS_ENDPOINT_URL is set.
+case System.get_env("AWS_ENDPOINT_URL") do
+  nil ->
+    :ok
+
+  endpoint ->
+    uri = URI.parse(endpoint)
+    scheme = (uri.scheme || "http") <> "://"
+    host = uri.host || "localhost"
+    port = uri.port || if(uri.scheme == "https", do: 443, else: 80)
+
+    service_opts = [
+      scheme: scheme,
+      host: host,
+      port: port,
+      region: aws_region
+    ]
+
+    config :ex_aws, :cloudwatch, service_opts
+    config :ex_aws, :logs, service_opts
+end
+
+cloudwatch_logs_enabled = truthy?.(System.get_env("CLOUDWATCH_LOGS_ENABLED"))
+cloudwatch_metrics_enabled = truthy?.(System.get_env("CLOUDWATCH_METRICS_ENABLED"))
+otel_traces_enabled = truthy?.(System.get_env("OTEL_TRACES_ENABLED"))
+
+log_group =
+  System.get_env("CLOUDWATCH_LOG_GROUP") ||
+    "/phx-backend-boilerplate/#{config_env()}"
+
+metrics_namespace =
+  System.get_env("CLOUDWATCH_METRICS_NAMESPACE") || "PhxBackendBoilerplate"
+
+push_interval =
+  case System.get_env("CLOUDWATCH_METRICS_PUSH_INTERVAL_MS") do
+    nil -> if System.get_env("AWS_ENDPOINT_URL"), do: 5_000, else: 60_000
+    value -> String.to_integer(value)
+  end
+
+log_stream =
+  case System.get_env("CLOUDWATCH_LOG_STREAM") do
+    nil -> nil
+    "" -> nil
+    stream -> stream
+  end
+
+cloudwatch_logs =
+  [
+    log_group: log_group,
+    flush_interval_ms: String.to_integer(System.get_env("CLOUDWATCH_LOGS_FLUSH_MS") || "2000"),
+    max_batch: String.to_integer(System.get_env("CLOUDWATCH_LOGS_MAX_BATCH") || "50"),
+    level: String.to_existing_atom(System.get_env("CLOUDWATCH_LOGS_LEVEL") || "info")
+  ]
+  |> then(fn opts ->
+    if log_stream, do: Keyword.put(opts, :log_stream, log_stream), else: opts
+  end)
+
+config :phx_backend_boilerplate, PhxBackendBoilerplate.Observability,
+  cloudwatch_logs_enabled: cloudwatch_logs_enabled,
+  cloudwatch_metrics_enabled: cloudwatch_metrics_enabled,
+  otel_traces_enabled: otel_traces_enabled,
+  cloudwatch_logs: cloudwatch_logs,
+  cloudwatch_metrics: [
+    namespace: metrics_namespace,
+    push_interval: push_interval
+  ]
+
+if otel_traces_enabled do
+  otlp_endpoint =
+    System.get_env("OTEL_EXPORTER_OTLP_ENDPOINT") || "http://localhost:4318"
+
+  config :opentelemetry,
+    span_processor: :batch,
+    traces_exporter: :otlp,
+    id_generator: :opentelemetry_xray_id_generator,
+    propagators: [:opentelemetry_xray_propagator, :baggage]
+
+  config :opentelemetry_exporter,
+    otlp_protocol: :http_protobuf,
+    otlp_endpoint: otlp_endpoint
+else
+  config :opentelemetry, traces_exporter: :none
+end
+
 if config_env() == :prod do
   database_url =
     System.get_env("DATABASE_URL") ||

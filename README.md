@@ -3,6 +3,7 @@
 To start your Phoenix server:
 
 * Run `docker compose up -d` to start Redis and Postgres (required for rate limiting and the database; Postgres is on host port `5433`)
+* Optionally `docker compose --profile observability up -d` for LocalStack + OTel Collector + Jaeger (see Observability below)
 * Run `mix setup` to install and setup dependencies
 * Start Phoenix endpoint with `mix phx.server` or inside IEx with `iex -S mix phx.server`
 
@@ -213,6 +214,77 @@ curl -s "http://localhost:4000/api/demo/cached?key=widget&work_ms=500"
 ```
 
 LiveDashboard metrics include SWR fetch freshness, lock contended, refresh errors, and Nebulex command duration.
+
+## Observability (CloudWatch + X-Ray)
+
+Production-shaped signals:
+
+| Signal | Mechanism | Local without AWS credentials |
+| --- | --- | --- |
+| Logs | JSON stdout (`logger_json` in prod) + optional batched `PutLogEvents` | LocalStack Logs |
+| Metrics | Existing `Telemetry.Metrics` via `telemetry_metrics_cloudwatch` | LocalStack CloudWatch |
+| Traces | OpenTelemetry (Bandit/Phoenix/Ecto) + X-Ray IDs/propagator, OTLP export | OTel Collector → Jaeger (`:16686`). LocalStack X-Ray is **Pro-only** — not used |
+
+### Environment variables
+
+| Variable | Purpose | Example |
+| --- | --- | --- |
+| `AWS_REGION` | AWS region | `us-east-1` |
+| `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` | Credentials (dummy `test`/`test` for LocalStack) | |
+| `AWS_ENDPOINT_URL` | Custom ExAws endpoint (LocalStack) | `http://localhost:4566` |
+| `CLOUDWATCH_LOGS_ENABLED` | Attach CloudWatch Logs Logger handler | `true` |
+| `CLOUDWATCH_LOG_GROUP` | Log group name | `/phx-backend-boilerplate/dev` |
+| `CLOUDWATCH_LOG_STREAM` | Optional stream name (default: host-pid) | |
+| `CLOUDWATCH_METRICS_ENABLED` | Start CloudWatch metrics reporter | `true` |
+| `CLOUDWATCH_METRICS_NAMESPACE` | Metric namespace | `PhxBackendBoilerplate` |
+| `CLOUDWATCH_METRICS_PUSH_INTERVAL_MS` | Push interval (defaults to 5s with LocalStack, 60s otherwise) | `5000` |
+| `OTEL_TRACES_ENABLED` | Install OTel instrumentation + OTLP export | `true` |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | Collector HTTP endpoint | `http://localhost:4318` |
+
+On ECS/Fargate you can keep JSON logs on stdout (agent → CloudWatch) and leave `CLOUDWATCH_LOGS_ENABLED` off to avoid duplicate log groups. Point `OTEL_EXPORTER_OTLP_ENDPOINT` at an ADOT sidecar; the collector’s `awsxray` exporter sends to X-Ray.
+
+### IAM (application / task role)
+
+* `logs:CreateLogGroup`, `logs:CreateLogStream`, `logs:PutLogEvents`, `logs:DescribeLogStreams`
+* `cloudwatch:PutMetricData`
+* X-Ray permissions belong on the **collector/ADOT** role (`xray:PutTraceSegments`, `xray:PutTelemetryRecords`)
+
+### Local verification (LocalStack + Jaeger)
+
+```bash
+docker compose --profile observability up -d
+
+export AWS_ENDPOINT_URL=http://localhost:4566
+export AWS_ACCESS_KEY_ID=test
+export AWS_SECRET_ACCESS_KEY=test
+export AWS_REGION=us-east-1
+export CLOUDWATCH_LOGS_ENABLED=true
+export CLOUDWATCH_METRICS_ENABLED=true
+export CLOUDWATCH_LOG_GROUP=/phx-backend-boilerplate/dev
+export OTEL_TRACES_ENABLED=true
+export OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318
+
+mix observability.setup
+mix phx.server
+```
+
+Generate traffic, then inspect:
+
+```bash
+aws --endpoint-url http://localhost:4566 logs filter-log-events \
+  --log-group-name /phx-backend-boilerplate/dev
+
+aws --endpoint-url http://localhost:4566 cloudwatch list-metrics \
+  --namespace PhxBackendBoilerplate
+
+# Traces: open http://localhost:16686 (Jaeger UI)
+```
+
+Tagged ExUnit tests (skipped by default):
+
+```bash
+AWS_ENDPOINT_URL=http://localhost:4566 mix test --only localstack
+```
 
 ### HTTP streaming and SSE (native Plug)
 
