@@ -28,6 +28,14 @@ defmodule PhxBackendBoilerplateWeb.Router do
       by: [:ip]
   end
 
+  pipeline :rate_limit_demo_comments do
+    plug PhxBackendBoilerplateWeb.Plugs.RateLimit,
+      id: "demo_comments",
+      scale: :timer.minutes(1),
+      limit: 60,
+      by: [:ip]
+  end
+
   pipeline :rate_limit_demo_public do
     plug PhxBackendBoilerplateWeb.Plugs.RateLimit,
       id: "demo_public",
@@ -78,6 +86,13 @@ defmodule PhxBackendBoilerplateWeb.Router do
       pipe_through :rate_limit_demo_login
 
       post "/login", Demo.SessionController, :create
+    end
+
+    scope "/demo" do
+      pipe_through :api
+      pipe_through :rate_limit_demo_comments
+
+      post "/comments", Demo.CommentController, :create
     end
 
     scope "/demo" do

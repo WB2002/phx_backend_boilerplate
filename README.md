@@ -179,6 +179,57 @@ curl -i "http://localhost:4000/api/demo/expensive?hold_ms=5000"
 
 Expect two `200` responses and one `503` with `{"errors":{"detail":"Service Unavailable"}}`.
 
+`POST /api/demo/comments` — request DTO validation + HTML sanitization (**60/min per IP**):
+
+```bash
+curl -i -X POST http://localhost:4000/api/demo/comments \
+  -H "Content-Type: application/json" \
+  -d '{"title":"<b>Hi</b>","body":"<p>ok</p><script>alert(1)</script>","email":"demo@example.com","parent_id":1}'
+```
+
+Valid payloads return `200` with sanitized fields (`title` stripped of tags, `body` BasicHTML-scrubbed). Invalid payloads return `422` with `errors.fields`.
+
+### Request DTOs, HTML sanitization, and injection hardening
+
+JSON APIs use **Ecto embedded schemas** as request DTOs (the Phoenix equivalent of class-validator / Joi). Controllers validate with `PhxBackendBoilerplateWeb.Params.validate/2` and set `action_fallback PhxBackendBoilerplateWeb.FallbackController` for `422` field errors.
+
+```elixir
+defmodule MyAppWeb.Demo.CommentDTO do
+  use Ecto.Schema
+  import Ecto.Changeset
+  alias PhxBackendBoilerplate.Sanitize
+
+  @primary_key false
+  embedded_schema do
+    field :title, :string
+    field :body, :string
+    field :email, :string
+    field :parent_id, :integer
+  end
+
+  def changeset(attrs) do
+    %__MODULE__{}
+    |> cast(attrs, [:title, :body, :email, :parent_id])
+    |> validate_required([:title, :body, :email])
+    |> validate_format(:email, ~r/^[^\s]+@[^\s]+$/)
+    |> Sanitize.strip_tags(:title)  # plain text
+    |> Sanitize.html(:body)         # BasicHTML allowlist
+  end
+end
+```
+
+**XSS / malicious HTML:** opt-in per field via `PhxBackendBoilerplate.Sanitize` (`html_sanitize_ex`). Do **not** strip HTML globally — that breaks passwords, tokens, and code. Apply `Sanitize.html/2` to rich text and `Sanitize.strip_tags/2` to titles/names that may contain pasted markup.
+
+**SQL injection:** Ecto parameterizes queries. Protection is typed DTO fields (`:integer`, `:id`, `:binary_id`) plus bound parameters (`where(id == ^id)`). Do **not** scrub SQL keywords from strings, and never interpolate user input into SQL.
+
+```elixir
+# Good — bound parameter after DTO cast
+from(c in Comment, where: c.id == ^dto.parent_id)
+
+# Bad — never do this
+Repo.query("SELECT * FROM comments WHERE id = #{user_input}")
+```
+
 ### Feature flags (FunWithFlags)
 
 Flags persist in Postgres (`fun_with_flags_toggles`), cache in ETS, and sync across nodes via `Phoenix.PubSub`. Prefer `PhxBackendBoilerplate.Flags` over calling `FunWithFlags` from controllers.
