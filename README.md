@@ -214,6 +214,25 @@ curl -s "http://localhost:4000/api/demo/cached?key=widget&work_ms=500"
 
 LiveDashboard metrics include SWR fetch freshness, lock contended, refresh errors, and Nebulex command duration.
 
+### HTTP streaming and SSE (native Plug)
+
+No third-party streaming libraries — use `Plug.Conn.send_chunked/2` and `Plug.Conn.chunk/2`. The controller process owns the connection for the stream lifetime. These demos are on `:api_stream` (accepts `json`, `sse`, `ndjson`) so browser `EventSource` (`Accept: text/event-stream`) is not rejected with 406.
+
+`GET /api/demo/stream/chunks` — newline-delimited JSON (`application/x-ndjson`). Optional `count` (default 3, max 10) and `interval_ms` (default 0, max 200):
+
+```bash
+curl -N "http://localhost:4000/api/demo/stream/chunks?count=3&interval_ms=100"
+```
+
+`GET /api/demo/stream/sse` — Server-Sent Events (`text/event-stream`) with `tick` events then `done`:
+
+```bash
+curl -N -H "Accept: text/event-stream" \
+  "http://localhost:4000/api/demo/stream/sse?count=3&interval_ms=100"
+```
+
+For long-lived PubSub streams, keep the `receive`/`chunk` loop in the connection process and consider raising Bandit `idle_timeout` on the endpoint if connections stay open for minutes.
+
 ## Learn more
 
 * Official website: https://www.phoenixframework.org/

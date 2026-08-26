@@ -61,6 +61,13 @@ config :logger, :default_formatter,
 # Use Jason for JSON parsing in Phoenix
 config :phoenix, :json_library, Jason
 
+# MIME extensions for streaming demos (`:accepts` on `:api_stream`).
+# After changing these, recompile mime: `mix deps.compile mime --force`.
+config :mime, :types, %{
+  "text/event-stream" => ["sse"],
+  "application/x-ndjson" => ["ndjson"]
+}
+
 # Named Regulator concurrency limiters (capacity / load shedding).
 # Demo uses a small Static limit so parallel requests can trigger 503.
 # For production resource classes prefer AIMD/Gradient with a realistic

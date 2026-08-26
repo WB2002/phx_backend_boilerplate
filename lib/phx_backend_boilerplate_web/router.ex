@@ -13,6 +13,13 @@ defmodule PhxBackendBoilerplateWeb.Router do
     plug PhxBackendBoilerplateWeb.Plugs.EnsureGuestId
   end
 
+  # Chunked HTTP / SSE — accepts EventSource and NDJSON clients (not json-only).
+  # No Regulator: a live stream would hold a concurrency slot for the whole connection.
+  pipeline :api_stream do
+    plug :accepts, ["json", "sse", "ndjson"]
+    plug PhxBackendBoilerplateWeb.Plugs.Deadline
+  end
+
   pipeline :rate_limit_demo_login do
     plug PhxBackendBoilerplateWeb.Plugs.RateLimit,
       id: "demo_login",
@@ -45,6 +52,14 @@ defmodule PhxBackendBoilerplateWeb.Router do
       by: [:ip]
   end
 
+  pipeline :rate_limit_demo_stream do
+    plug PhxBackendBoilerplateWeb.Plugs.RateLimit,
+      id: "demo_stream",
+      scale: :timer.minutes(1),
+      limit: 60,
+      by: [:ip]
+  end
+
   pipeline :load_shed_demo_expensive do
     plug PhxBackendBoilerplateWeb.Plugs.LoadShed, regulator: :demo_expensive
   end
@@ -74,6 +89,13 @@ defmodule PhxBackendBoilerplateWeb.Router do
       pipe_through [:api, :rate_limit_demo_cached]
 
       get "/cached", Demo.CachedController, :show
+    end
+
+    scope "/demo" do
+      pipe_through [:api_stream, :rate_limit_demo_stream]
+
+      get "/stream/chunks", Demo.StreamController, :chunks
+      get "/stream/sse", Demo.StreamController, :sse
     end
   end
 
