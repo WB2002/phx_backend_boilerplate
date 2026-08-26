@@ -371,6 +371,72 @@ curl -s "http://localhost:4000/api/demo/cached?key=widget&work_ms=500"
 
 LiveDashboard metrics include SWR fetch freshness, lock contended, refresh errors, and Nebulex command duration.
 
+## Crypto (Argon2 digests + AWS KMS)
+
+Generic helpers under `PhxBackendBoilerplate.Crypto` — names are not tied to passwords or any domain concept.
+
+| Module | API | Use when |
+| --- | --- | --- |
+| `Crypto.Digest` | `digest/1`, `verify/2`, `dummy_verify/0` | One-way Argon2id PHC digests |
+| `Crypto.KMS` | `encrypt/1-2`, `decrypt/1-2` | Direct KMS for binaries ≤ 4 KiB |
+| `Crypto.Envelope` | `seal/1-2`, `open/1-2` | Any size via AWS Encryption SDK (KMS keyring) |
+
+```elixir
+alias PhxBackendBoilerplate.Crypto
+
+stored = Crypto.digest("secret-value")
+Crypto.verify("secret-value", stored) # true
+Crypto.dummy_verify()                 # false (timing parity)
+
+{:ok, ct} = Crypto.encrypt("small", context: %{"purpose" => "token"})
+{:ok, "small"} = Crypto.decrypt(ct, context: %{"purpose" => "token"})
+
+{:ok, msg} = Crypto.seal(large_binary, context: %{"tenant" => "acme"})
+{:ok, ^large_binary} = Crypto.open(msg)
+```
+
+Config (`KMS_KEY_ID` is optional at boot; missing key returns `{:error, :key_id_missing}`):
+
+```elixir
+config :phx_backend_boilerplate, PhxBackendBoilerplate.Crypto,
+  key_id: System.get_env("KMS_KEY_ID"),
+  kms: PhxBackendBoilerplate.Crypto.KMS.ExAws
+```
+
+Tests use `Crypto.KMS.Memory` (AES-256-GCM wrap, no AWS). Argon2 needs a C toolchain (`mix deps.compile argon2_elixir`). Test costs are lowered in `config/test.exs` only.
+
+`ex_aws` is pinned to `~> 2.6.0` so it resolves with `aws_encryption_sdk` (which requires `hackney ~> 1.20`). Outbound AWS HTTP still goes through Req via `PhxBackendBoilerplate.AWS.HTTPClient`.
+
+### Environment variables
+
+| Variable | Purpose | Example |
+| --- | --- | --- |
+| `KMS_KEY_ID` | KMS key id / ARN / alias for encrypt & seal | `arn:aws:kms:us-east-1:123:key/...` |
+| `AWS_REGION` / `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` / `AWS_ENDPOINT_URL` | Same as Observability (ExAws) | |
+
+### IAM
+
+* `kms:Encrypt`, `kms:Decrypt`, `kms:GenerateDataKey` on the configured key
+
+### LocalStack
+
+Observability profile LocalStack includes `kms`. Create a CMK, export `KMS_KEY_ID`, then run tagged tests:
+
+```bash
+docker compose --profile observability up -d
+
+export AWS_ENDPOINT_URL=http://localhost:4566
+export AWS_ACCESS_KEY_ID=test
+export AWS_SECRET_ACCESS_KEY=test
+export AWS_REGION=us-east-1
+
+KEY_ID=$(aws --endpoint-url "$AWS_ENDPOINT_URL" kms create-key \
+  --query 'KeyMetadata.Arn' --output text)
+export KMS_KEY_ID="$KEY_ID"
+
+mix test --only localstack
+```
+
 ## Observability (CloudWatch + X-Ray)
 
 Production-shaped signals:
@@ -396,6 +462,7 @@ Production-shaped signals:
 | `CLOUDWATCH_METRICS_PUSH_INTERVAL_MS` | Push interval (defaults to 5s with LocalStack, 60s otherwise) | `5000` |
 | `OTEL_TRACES_ENABLED` | Install OTel instrumentation + OTLP export | `true` |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | Collector HTTP endpoint | `http://localhost:4318` |
+| `KMS_KEY_ID` | KMS key for `Crypto.KMS` / `Crypto.Envelope` | key ARN / id / alias |
 
 On ECS/Fargate you can keep JSON logs on stdout (agent → CloudWatch) and leave `CLOUDWATCH_LOGS_ENABLED` off to avoid duplicate log groups. Point `OTEL_EXPORTER_OTLP_ENDPOINT` at an ADOT sidecar; the collector’s `awsxray` exporter sends to X-Ray.
 
@@ -403,6 +470,7 @@ On ECS/Fargate you can keep JSON logs on stdout (agent → CloudWatch) and leave
 
 * `logs:CreateLogGroup`, `logs:CreateLogStream`, `logs:PutLogEvents`, `logs:DescribeLogStreams`
 * `cloudwatch:PutMetricData`
+* `kms:Encrypt`, `kms:Decrypt`, `kms:GenerateDataKey` (when using Crypto against real KMS)
 * X-Ray permissions belong on the **collector/ADOT** role (`xray:PutTraceSegments`, `xray:PutTelemetryRecords`)
 
 ### Local verification (LocalStack + Jaeger)

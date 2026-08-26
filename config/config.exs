@@ -66,6 +66,12 @@ config :ex_aws,
   json_codec: Jason,
   http_client: PhxBackendBoilerplate.AWS.HTTPClient
 
+# Crypto: Argon2 digests + KMS encrypt/decrypt + envelope seal/open.
+# `key_id` is set from KMS_KEY_ID in runtime.exs (optional at boot).
+config :phx_backend_boilerplate, PhxBackendBoilerplate.Crypto,
+  key_id: nil,
+  kms: PhxBackendBoilerplate.Crypto.KMS.ExAws
+
 # Observability defaults (overridden in runtime.exs from env).
 config :phx_backend_boilerplate, PhxBackendBoilerplate.Observability,
   cloudwatch_logs_enabled: false,

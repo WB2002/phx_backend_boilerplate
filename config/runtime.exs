@@ -81,6 +81,17 @@ case System.get_env("AWS_ENDPOINT_URL") do
     config :ex_aws, :cloudwatch, service_opts
     config :ex_aws, :logs, service_opts
     config :ex_aws, :s3, service_opts
+    config :ex_aws, :kms, service_opts
+end
+
+# KMS key for Crypto.KMS / Crypto.Envelope (optional; ops fail with :key_id_missing).
+# Do not overwrite test.exs Memory adapter / wrapping_key when unset.
+case System.get_env("KMS_KEY_ID") do
+  key_id when is_binary(key_id) and key_id != "" ->
+    config :phx_backend_boilerplate, PhxBackendBoilerplate.Crypto, key_id: key_id
+
+  _ ->
+    :ok
 end
 
 # ---------------------------------------------------------------------------

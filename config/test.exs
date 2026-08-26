@@ -76,3 +76,14 @@ config :phx_backend_boilerplate, PhxBackendBoilerplate.SWR,
 
 # Disable ETS cache so SQL sandbox rollback is not shadowed by stale flag values.
 config :fun_with_flags, :cache, enabled: false
+
+# Fast Argon2 for tests only — never use these costs in production.
+config :argon2_elixir,
+  t_cost: 1,
+  m_cost: 8
+
+# In-memory KMS for unit tests (AES wrap; no AWS). ARN form required by Encryption SDK.
+config :phx_backend_boilerplate, PhxBackendBoilerplate.Crypto,
+  key_id: "arn:aws:kms:us-east-1:000000000000:key/00000000-0000-4000-8000-000000000001",
+  kms: PhxBackendBoilerplate.Crypto.KMS.Memory,
+  wrapping_key: :binary.copy(<<1>>, 32)
