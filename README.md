@@ -364,7 +364,7 @@ Demo flags:
 | `:demo_preview` | Global boolean | `GET /api/demo/flags/preview` → `404` when off, `200` when on |
 | `:demo_beta` | Per-guest actor | `GET /api/demo/flags/beta` → `403` when off, `200` when on for that guest |
 
-`mix ecto.setup` / seeds enable `:demo_preview`. Toggle in IEx or the HTML UI at [`/dev/feature-flags`](http://localhost:4000/dev/feature-flags) (dev only, same as LiveDashboard).
+`mix ecto.setup` / `mix seed` run versioned seeders (`PhxBackendBoilerplate.Seeds`): they enable `:demo_preview` globally and `:demo_beta` for the sample guest `11111111-1111-1111-1111-111111111111`. Already-applied versions are skipped; bump a seeder's `version:` to re-run it. Toggle flags in IEx or the HTML UI at [`/dev/feature-flags`](http://localhost:4000/dev/feature-flags) (dev only, same as LiveDashboard).
 
 ```elixir
 # IEx
