@@ -80,7 +80,44 @@ case System.get_env("AWS_ENDPOINT_URL") do
 
     config :ex_aws, :cloudwatch, service_opts
     config :ex_aws, :logs, service_opts
+    config :ex_aws, :s3, service_opts
 end
+
+# ---------------------------------------------------------------------------
+# File uploads (storage backend, ClamAV, S3 bucket)
+# ---------------------------------------------------------------------------
+
+storage_backend =
+  case System.get_env("STORAGE_BACKEND") do
+    "s3" -> PhxBackendBoilerplate.Files.Storage.S3
+    _ -> PhxBackendBoilerplate.Files.Storage.Local
+  end
+
+files_runtime = [
+  storage: storage_backend,
+  clamav: [
+    host: System.get_env("CLAMAV_HOST") || "127.0.0.1",
+    port: String.to_integer(System.get_env("CLAMAV_PORT") || "3310")
+  ]
+]
+
+files_runtime =
+  case System.get_env("CLAMAV_SKIP") do
+    v when v in ~w(true 1 yes on) ->
+      Keyword.put(files_runtime, :scanner, PhxBackendBoilerplate.Files.Scanner.AlwaysClean)
+
+    _ ->
+      files_runtime
+  end
+
+files_runtime =
+  case System.get_env("S3_BUCKET") do
+    nil -> files_runtime
+    "" -> files_runtime
+    bucket -> Keyword.put(files_runtime, :s3_bucket, bucket)
+  end
+
+config :phx_backend_boilerplate, PhxBackendBoilerplate.Files, files_runtime
 
 cloudwatch_logs_enabled = truthy?.(System.get_env("CLOUDWATCH_LOGS_ENABLED"))
 cloudwatch_metrics_enabled = truthy?.(System.get_env("CLOUDWATCH_METRICS_ENABLED"))

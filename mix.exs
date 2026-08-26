@@ -75,6 +75,7 @@ defmodule PhxBackendBoilerplate.MixProject do
       {:telemetry_poller, "~> 1.0"},
       {:telemetry_metrics_cloudwatch, "~> 1.1"},
       {:ex_aws, "~> 2.5"},
+      {:ex_aws_s3, "~> 2.5"},
       {:ex_aws_cloudwatch, "~> 2.0"},
       {:ex_aws_cloudwatch_logs, "~> 1.0"},
       {:logger_json, "~> 7.0"},

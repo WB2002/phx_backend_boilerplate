@@ -2,7 +2,7 @@
 
 To start your Phoenix server:
 
-* Run `docker compose up -d` to start Redis and Postgres (required for rate limiting and the database; Postgres is on host port `5433`)
+* Run `docker compose up -d` to start Redis, Postgres, and ClamAV (required for rate limiting, the database, and virus scanning; Postgres is on host port `5433`, ClamAV on `3310`)
 * Optionally `docker compose --profile observability up -d` for LocalStack + OTel Collector + Jaeger (see Observability below)
 * Run `mix setup` to install and setup dependencies
 * Start Phoenix endpoint with `mix phx.server` or inside IEx with `iex -S mix phx.server`
@@ -460,6 +460,55 @@ curl -N -H "Accept: text/event-stream" \
 ```
 
 For long-lived PubSub streams, keep the `receive`/`chunk` loop in the connection process and consider raising Bandit `idle_timeout` on the endpoint if connections stay open for minutes.
+
+### File uploads, virus scan, and resumable downloads
+
+Pipeline (never loads the whole file into RAM — `Plug.Upload` is a tempfile; hash/scan/store stream in 10 MiB chunks):
+
+```
+multipart POST → size/ext/MIME/magic → SHA-256 → ClamAV (fail-closed) → local disk or S3 → DB
+GET/HEAD      → Accept-Ranges: bytes → Range → 206 Partial Content
+```
+
+**Upload** (multiple files):
+
+```bash
+curl -s -X POST http://localhost:4000/api/demo/files \
+  -F "files[]=@./photo.png" \
+  -F "files[]=@./notes.txt" \
+  -F "sha256[]=$(shasum -a 256 ./photo.png | awk '{print $1}')" \
+  -F "sha256[]=$(shasum -a 256 ./notes.txt | awk '{print $1}')"
+```
+
+Use `files[]` / `sha256[]` so multipart parts become a list (plain `files=` twice keeps only the last file in Plug).
+
+Optional `sha256` values must align with `files` by index. Omit them to skip client checksum verification (server still computes SHA-256).
+
+**Download** (full + resume):
+
+```bash
+# Full
+curl -OJ "http://localhost:4000/api/demo/files/<id>"
+
+# Resumable Range
+curl -H "Range: bytes=0-1023" -o part.bin \
+  "http://localhost:4000/api/demo/files/<id>"
+```
+
+**Config / env**
+
+| Setting | Default | Notes |
+| --- | --- | --- |
+| `max_file_bytes` | 100_000_000 | Raise in config + `:parsers` `length` for multi-GB |
+| `STORAGE_BACKEND` | local | Set `s3` + `S3_BUCKET` (+ `AWS_ENDPOINT_URL` for LocalStack) |
+| `CLAMAV_HOST` / `CLAMAV_PORT` | `127.0.0.1` / `3310` | Fail-closed if unreachable |
+| `CLAMAV_SKIP` | unset | Set `true` to use always-clean scanner (local only; e.g. arm64 without ClamAV) |
+| Upload deadline | 30 minutes | `:api_uploads` pipeline |
+| Upload load shed | `demo_uploads` Static(4) | Concurrent upload cap |
+
+ClamAV starts with `docker compose up -d` (image runs under `platform: linux/amd64` for Apple Silicon). First boot can take a couple of minutes while virus definitions download. Tests use `Files.Scanner.Fake` (no daemon required). For a quick local smoke test without ClamAV: `CLAMAV_SKIP=true mix phx.server`.
+
+Allowed types (demo): PDF, PNG, JPEG, GIF, WEBP, TXT, CSV, ZIP — see `PhxBackendBoilerplate.Files` config.
 
 ## Learn more
 

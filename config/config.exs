@@ -11,6 +11,9 @@ config :phx_backend_boilerplate,
   ecto_repos: [PhxBackendBoilerplate.Repo],
   generators: [timestamp_type: :utc_datetime]
 
+# Plug.Parsers body limit (must cover max_files_per_request * max_file_bytes).
+config :phx_backend_boilerplate, :parsers, length: 500_000_000
+
 # Configure the endpoint
 config :phx_backend_boilerplate, PhxBackendBoilerplateWeb.Endpoint,
   url: [host: "localhost"],
@@ -94,8 +97,34 @@ config :mime, :types, %{
 # target_avg_latency (or :timeout) for that workload.
 config :phx_backend_boilerplate, PhxBackendBoilerplate.LoadShed,
   regulators: [
-    demo_expensive: {Regulator.Limit.Static, [limit: 2]}
+    demo_expensive: {Regulator.Limit.Static, [limit: 2]},
+    # Uploads hold connections for a long time; keep concurrency low.
+    demo_uploads: {Regulator.Limit.Static, [limit: 4]}
   ]
+
+# File uploads: validation, ClamAV, storage, resumable Range downloads.
+# Raise max_file_bytes (and Plug.Parsers :length) for multi-GB uploads.
+config :phx_backend_boilerplate, PhxBackendBoilerplate.Files,
+  max_file_bytes: 100_000_000,
+  max_files_per_request: 5,
+  hash_chunk_bytes: 10_485_760,
+  allowed_extensions: ~w(.pdf .png .jpg .jpeg .gif .webp .txt .csv .zip),
+  allowed_content_types: [
+    "application/pdf",
+    "image/png",
+    "image/jpeg",
+    "image/gif",
+    "image/webp",
+    "text/plain",
+    "text/csv",
+    "application/zip",
+    "application/x-zip-compressed"
+  ],
+  storage: PhxBackendBoilerplate.Files.Storage.Local,
+  local_root: "priv/uploads",
+  scanner: PhxBackendBoilerplate.Files.Scanner.ClamAV,
+  clamav: [host: "127.0.0.1", port: 3310],
+  s3_bucket: nil
 
 # Request deadline budget (monotonic). Propagated as x-request-timeout-ms.
 config :phx_backend_boilerplate, PhxBackendBoilerplate.Deadline, timeout: 15_000

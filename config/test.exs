@@ -40,8 +40,17 @@ config :phoenix,
 # Same Static(2) demo limiter as config.exs; plug tests install unique names.
 config :phx_backend_boilerplate, PhxBackendBoilerplate.LoadShed,
   regulators: [
-    demo_expensive: {Regulator.Limit.Static, [limit: 2]}
+    demo_expensive: {Regulator.Limit.Static, [limit: 2]},
+    demo_uploads: {Regulator.Limit.Static, [limit: 4]}
   ]
+
+config :phx_backend_boilerplate, PhxBackendBoilerplate.Files,
+  max_file_bytes: 1_000_000,
+  max_files_per_request: 5,
+  hash_chunk_bytes: 1024,
+  local_root: "tmp/test-uploads",
+  storage: PhxBackendBoilerplate.Files.Storage.Local,
+  scanner: PhxBackendBoilerplate.Files.Scanner.Fake
 
 # Fast timeouts for outbound HTTP tests; plug stubs avoid the network.
 config :phx_backend_boilerplate, PhxBackendBoilerplate.HTTP, receive_timeout: 1_000

@@ -48,7 +48,8 @@ defmodule PhxBackendBoilerplateWeb.Endpoint do
   plug Plug.Parsers,
     parsers: [:urlencoded, :multipart, :json],
     pass: ["*/*"],
-    json_decoder: Phoenix.json_library()
+    json_decoder: Phoenix.json_library(),
+    length: Application.compile_env(:phx_backend_boilerplate, [:parsers, :length], 500_000_000)
 
   plug Plug.MethodOverride
   plug Plug.Head

@@ -29,7 +29,24 @@ services:
       timeout: 3s
       retries: 5
 
+  # ClamAV daemon (clamd). Uploads stream via TCP INSTREAM (fail-closed if down).
+  # platform amd64: official image has no linux/arm64 manifest (Apple Silicon uses qemu).
+  clamav:
+    image: clamav/clamav:1.4
+    platform: linux/amd64
+    ports:
+      - "3310:3310"
+    volumes:
+      - clamav_data:/var/lib/clamav
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/clamdcheck.sh"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 120s
+
   # Community LocalStack: CloudWatch Logs + Metrics (X-Ray is Pro-only — use Jaeger).
+  # For S3 file storage demos, set SERVICES to include s3 and STORAGE_BACKEND=s3.
   localstack:
     profiles: ["observability"]
     image: localstack/localstack:4.3
@@ -70,4 +87,5 @@ services:
 volumes:
   redis_data:
   postgres_data:
+  clamav_data:
   localstack_data:

@@ -76,8 +76,35 @@ defmodule PhxBackendBoilerplateWeb.Router do
       by: [:ip]
   end
 
+  pipeline :rate_limit_demo_uploads do
+    plug PhxBackendBoilerplateWeb.Plugs.RateLimit,
+      id: "demo_uploads",
+      scale: :timer.minutes(1),
+      limit: 10,
+      by: [:ip]
+  end
+
+  pipeline :rate_limit_demo_downloads do
+    plug PhxBackendBoilerplateWeb.Plugs.RateLimit,
+      id: "demo_downloads",
+      scale: :timer.minutes(1),
+      limit: 60,
+      by: [:ip]
+  end
+
+  # Large multipart uploads: long deadline + concurrency cap.
+  # Response is JSON; request body is multipart/form-data via Plug.Parsers.
+  pipeline :api_uploads do
+    plug :accepts, ["json"]
+    plug PhxBackendBoilerplateWeb.Plugs.Deadline, timeout: :timer.minutes(30)
+  end
+
   pipeline :load_shed_demo_expensive do
     plug PhxBackendBoilerplateWeb.Plugs.LoadShed, regulator: :demo_expensive
+  end
+
+  pipeline :load_shed_demo_uploads do
+    plug PhxBackendBoilerplateWeb.Plugs.LoadShed, regulator: :demo_uploads
   end
 
   scope "/api", PhxBackendBoilerplateWeb do
@@ -119,6 +146,19 @@ defmodule PhxBackendBoilerplateWeb.Router do
 
       get "/stream/chunks", Demo.StreamController, :chunks
       get "/stream/sse", Demo.StreamController, :sse
+    end
+
+    scope "/demo" do
+      pipe_through [:api_uploads, :rate_limit_demo_uploads, :load_shed_demo_uploads]
+
+      post "/files", Demo.FilesController, :create
+    end
+
+    scope "/demo" do
+      pipe_through [:api, :rate_limit_demo_downloads]
+
+      get "/files/:id", Demo.FilesController, :show
+      head "/files/:id", Demo.FilesController, :head
     end
 
     scope "/demo/flags" do
