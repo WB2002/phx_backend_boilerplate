@@ -6,6 +6,9 @@ defmodule PhxBackendBoilerplate.HTTP do
   `receive_timeout`, attaches `x-request-timeout-ms`, and maps deadline-limited
   transport timeouts to `{:error, :deadline_exceeded}`.
 
+  When `PhxBackendBoilerplate.RequestContext` is set, also attaches
+  `x-request-id` and `x-correlation-id` for downstream tracing.
+
   Resilience (retry, circuit breaker) belongs in per-dependency
   `ExternalService` clients under `PhxBackendBoilerplate.Integrations`.
   This module always disables Req's built-in retry so those policies are
@@ -13,6 +16,7 @@ defmodule PhxBackendBoilerplate.HTTP do
   """
 
   alias PhxBackendBoilerplate.Deadline
+  alias PhxBackendBoilerplate.RequestContext
 
   @finch PhxBackendBoilerplate.Finch
   @default_receive_timeout 15_000
@@ -21,8 +25,8 @@ defmodule PhxBackendBoilerplate.HTTP do
   Builds a `Req.Request` with shared defaults, app config, and `opts`.
 
   Merge order: built-in defaults → `config :phx_backend_boilerplate, __MODULE__` →
-  `opts`. Then `retry: false` is forced. Deadline headers and timeout capping
-  are applied in `request/1`.
+  `opts`. Then `retry: false` is forced. Deadline/context headers and timeout
+  capping are applied in `request/1`.
   """
   def new(opts \\ []) do
     opts
@@ -46,7 +50,7 @@ defmodule PhxBackendBoilerplate.HTTP do
 
       merged =
         merged
-        |> maybe_put_deadline_headers()
+        |> maybe_put_propagation_headers()
         |> maybe_cap_receive_timeout(remaining_before)
         |> Keyword.put(:retry, false)
 
@@ -90,23 +94,25 @@ defmodule PhxBackendBoilerplate.HTTP do
     |> Keyword.merge(opts)
   end
 
-  defp maybe_put_deadline_headers(opts) do
-    case Deadline.propagation_headers() do
+  defp maybe_put_propagation_headers(opts) do
+    propagation = RequestContext.propagation_headers() ++ Deadline.propagation_headers()
+
+    case propagation do
       [] ->
         opts
 
-      deadline_headers ->
+      headers ->
         existing = Keyword.get(opts, :headers, [])
-        Keyword.put(opts, :headers, merge_headers(existing, deadline_headers))
+        Keyword.put(opts, :headers, merge_headers(existing, headers))
     end
   end
 
-  defp merge_headers(existing, deadline_headers) when is_list(existing) do
-    existing ++ deadline_headers
+  defp merge_headers(existing, extra) when is_list(existing) do
+    existing ++ extra
   end
 
-  defp merge_headers(existing, deadline_headers) when is_map(existing) do
-    Enum.reduce(deadline_headers, existing, fn {k, v}, acc ->
+  defp merge_headers(existing, extra) when is_map(existing) do
+    Enum.reduce(extra, existing, fn {k, v}, acc ->
       Map.put(acc, k, v)
     end)
   end

@@ -3,9 +3,12 @@ defmodule PhxBackendBoilerplate.HTTPTest do
 
   alias PhxBackendBoilerplate.Deadline
   alias PhxBackendBoilerplate.HTTP
+  alias PhxBackendBoilerplate.RequestContext
 
   setup do
     Process.delete(:phx_backend_boilerplate_request_deadline)
+    Process.delete(:phx_backend_boilerplate_request_context)
+    Logger.reset_metadata([])
     :ok
   end
 
@@ -53,6 +56,30 @@ defmodule PhxBackendBoilerplate.HTTPTest do
       assert [value] = Plug.Conn.get_req_header(conn, "x-request-timeout-ms")
       assert String.to_integer(value) > 0
       assert String.to_integer(value) <= 2_000
+      Req.Test.json(conn, %{"ok" => true})
+    end)
+
+    assert {:ok, %{status: 200}} =
+             HTTP.get("/hello",
+               base_url: "https://example.test",
+               plug: {Req.Test, stub_name}
+             )
+  end
+
+  test "attaches x-request-id and x-correlation-id when RequestContext is set" do
+    Logger.metadata(request_id: "req-out-1")
+
+    RequestContext.start_from_conn(%Plug.Conn{
+      req_headers: [{"x-correlation-id", "corr-out-1"}],
+      assigns: %{}
+    })
+
+    stub_name = :"http_ctx_hdr_#{System.unique_integer([:positive])}"
+
+    Req.Test.stub(stub_name, fn conn ->
+      assert Plug.Conn.get_req_header(conn, "x-request-id") == ["req-out-1"]
+      assert Plug.Conn.get_req_header(conn, "x-correlation-id") == ["corr-out-1"]
+      assert Plug.Conn.get_req_header(conn, "x-user-id") == []
       Req.Test.json(conn, %{"ok" => true})
     end)
 

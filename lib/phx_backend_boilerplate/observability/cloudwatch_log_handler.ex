@@ -169,6 +169,8 @@ defmodule PhxBackendBoilerplate.Observability.CloudWatchLogHandler do
     meta
     |> Map.take([
       :request_id,
+      :correlation_id,
+      :user_id,
       :trace_id,
       :span_id,
       :otel_trace_id,

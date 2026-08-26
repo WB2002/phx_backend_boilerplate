@@ -59,7 +59,7 @@ config :tailwind,
 # Configure Elixir's Logger
 config :logger, :default_formatter,
   format: "$time $metadata[$level] $message\n",
-  metadata: [:request_id, :otel_trace_id, :otel_span_id]
+  metadata: [:request_id, :correlation_id, :user_id, :otel_trace_id, :otel_span_id]
 
 # ExAws uses Req via our Finch pool (no Hackney).
 config :ex_aws,

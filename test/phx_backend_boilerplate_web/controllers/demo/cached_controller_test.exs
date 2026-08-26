@@ -22,6 +22,18 @@ defmodule PhxBackendBoilerplateWeb.Demo.CachedControllerTest do
            } = json_response(conn, 200)
   end
 
+  test "echoes request_id and correlation_id response headers", %{conn: conn, key: key} do
+    conn =
+      conn
+      |> put_req_header("x-correlation-id", "journey-cached-1")
+      |> get(~p"/api/demo/cached?key=#{key}&work_ms=0")
+
+    assert json_response(conn, 200)
+    assert [request_id] = get_resp_header(conn, "x-request-id")
+    assert request_id != ""
+    assert get_resp_header(conn, "x-correlation-id") == ["journey-cached-1"]
+  end
+
   test "caps work_ms at 2000", %{conn: conn, key: key} do
     conn = get(conn, ~p"/api/demo/cached?key=#{key}&work_ms=99999")
 

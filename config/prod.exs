@@ -32,7 +32,14 @@ config :logger, level: :info
 config :logger, :default_handler,
   formatter:
     {LoggerJSON.Formatters.Basic,
-     metadata: [:request_id, :otel_trace_id, :otel_span_id, :otel_trace_flags]}
+     metadata: [
+       :request_id,
+       :correlation_id,
+       :user_id,
+       :otel_trace_id,
+       :otel_span_id,
+       :otel_trace_flags
+     ]}
 
 # X-Ray-compatible trace IDs and header propagation (OTLP → ADOT → X-Ray).
 config :opentelemetry,
