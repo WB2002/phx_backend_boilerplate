@@ -193,6 +193,14 @@ config :phx_backend_boilerplate, PhxBackendBoilerplate.Recaptcha,
 config :phx_backend_boilerplate, PhxBackendBoilerplate.Integrations.Example,
   base_url: "https://api.example.com"
 
+# Slack notifications — bot_token / skip / adapter from runtime.exs and env configs.
+config :phx_backend_boilerplate, PhxBackendBoilerplate.Integrations.Slack,
+  bot_token: nil,
+  default_channel: nil,
+  skip: false,
+  adapter: PhxBackendBoilerplate.Integrations.Slack.WebAPI,
+  api_url: "https://slack.com/api/chat.postMessage"
+
 # Multilevel cache topology (Nebulex validates these options strictly).
 config :phx_backend_boilerplate, PhxBackendBoilerplate.Cache,
   inclusion_policy: :inclusive,

@@ -25,6 +25,7 @@ defmodule PhxBackendBoilerplate.Application do
         PhxBackendBoilerplate.Cache.Coalescer,
         {Task.Supervisor, name: PhxBackendBoilerplate.Cache.TaskSupervisor},
         PhxBackendBoilerplate.Integrations.Example,
+        PhxBackendBoilerplate.Integrations.Slack.WebAPI,
         # Start to serve requests, typically the last entry
         PhxBackendBoilerplateWeb.Endpoint,
         {Absinthe.Subscription, PhxBackendBoilerplateWeb.Endpoint}

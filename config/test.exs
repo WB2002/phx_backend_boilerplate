@@ -72,6 +72,17 @@ config :phx_backend_boilerplate, PhxBackendBoilerplate.Integrations.Example,
   base_url: "https://example.test",
   api_token: "test-token"
 
+# Slack: Fake adapter; skip off so notify tests exercise the facade.
+config :phx_backend_boilerplate, PhxBackendBoilerplate.Integrations.Slack,
+  skip: false,
+  adapter: PhxBackendBoilerplate.Integrations.Slack.Fake,
+  bot_token: "xoxb-test-token",
+  default_channel: nil,
+  api_url: "https://slack.com/api/chat.postMessage"
+
+config :phx_backend_boilerplate, PhxBackendBoilerplate.Integrations.Slack.Fake,
+  result: {:ok, :fake}
+
 # Short SWR defaults for tests (still soft < l1 < l2).
 config :phx_backend_boilerplate, PhxBackendBoilerplate.Cache,
   inclusion_policy: :inclusive,

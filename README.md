@@ -199,7 +199,46 @@ curl -i -X POST http://localhost:4000/api/demo/jobs \
   -d '{"message":"hello","work_ms":500}'
 ```
 
+Optional Slack notify after the job finishes (opt-in per enqueue):
+
+```bash
+curl -i -X POST http://localhost:4000/api/demo/jobs \
+  -H "Content-Type: application/json" \
+  -d '{"message":"hello","work_ms":0,"notify_slack":true,"slack_channel":"C0123456789"}'
+```
+
 Inspect queued/completed jobs in the Oban Web dashboard at [`/dev/oban`](http://localhost:4000/dev/oban) (dev only).
+
+### Slack notifications
+
+`PhxBackendBoilerplate.Integrations.Slack` posts to a channel via Slack’s `chat.postMessage` Bot API. Call it after your own processing completes when you want a notification:
+
+```elixir
+# IEx or any worker
+PhxBackendBoilerplate.Integrations.Slack.notify("Export finished", channel: "C0123456789")
+```
+
+Setup:
+
+1. Create a Slack app with Bot Token Scope `chat:write`
+2. Install the app to your workspace and invite the bot to the target channel
+3. Set env vars (see below)
+
+| Variable | Purpose | Notes |
+| --- | --- | --- |
+| `SLACK_BOT_TOKEN` | Bot User OAuth token (`xoxb-…`) | Required for real posts; omit/empty → `{:error, :misconfigured}` |
+| `SLACK_DEFAULT_CHANNEL` | Fallback channel ID | Optional; used when `:channel` is omitted |
+| `SLACK_SKIP` | Skip outbound Slack calls | **Dev defaults to `true`**; prod always off |
+
+In default **dev**, `SLACK_SKIP` is on so demos complete without a token. To actually post:
+
+```bash
+export SLACK_SKIP=false
+export SLACK_BOT_TOKEN=xoxb-…
+export SLACK_DEFAULT_CHANNEL=C0123456789   # optional
+```
+
+Returns `{:ok, response}`, `{:ok, :skipped}`, or `{:error, reason}`. Callers should usually log Slack failures and still treat their own work as successful (the demo Oban job does this).
 
 ### WebSockets, PubSub, and socket auth
 

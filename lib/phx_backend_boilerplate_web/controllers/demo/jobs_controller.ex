@@ -4,6 +4,10 @@ defmodule PhxBackendBoilerplateWeb.Demo.JobsController do
 
   `POST /api/demo/jobs` with `{"message":"hello","work_ms":0}` returns **202**
   and the inserted job metadata without waiting for `perform/1`.
+
+  Optional Slack notify after completion:
+
+      {"message":"hello","notify_slack":true,"slack_channel":"C0123456789"}
   """
 
   use PhxBackendBoilerplateWeb, :controller

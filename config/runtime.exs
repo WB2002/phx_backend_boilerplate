@@ -127,6 +127,49 @@ config :phx_backend_boilerplate, PhxBackendBoilerplate.Recaptcha,
   skip: recaptcha_skip?
 
 # ---------------------------------------------------------------------------
+# Slack (chat.postMessage)
+# ---------------------------------------------------------------------------
+
+slack_skip? =
+  case config_env() do
+    :prod ->
+      false
+
+    :test ->
+      false
+
+    _ ->
+      # Dev defaults to skip so local demos work without a bot token.
+      case System.get_env("SLACK_SKIP") do
+        nil -> true
+        value -> truthy?.(value)
+      end
+  end
+
+slack_runtime = [skip: slack_skip?]
+
+slack_runtime =
+  case System.get_env("SLACK_BOT_TOKEN") do
+    token when is_binary(token) and token != "" ->
+      Keyword.put(slack_runtime, :bot_token, token)
+
+    _ ->
+      # Leave compile/test defaults (nil or Fake test token) when unset.
+      slack_runtime
+  end
+
+slack_runtime =
+  case System.get_env("SLACK_DEFAULT_CHANNEL") do
+    channel when is_binary(channel) and channel != "" ->
+      Keyword.put(slack_runtime, :default_channel, channel)
+
+    _ ->
+      slack_runtime
+  end
+
+config :phx_backend_boilerplate, PhxBackendBoilerplate.Integrations.Slack, slack_runtime
+
+# ---------------------------------------------------------------------------
 # Observability (CloudWatch Logs/Metrics + OpenTelemetry → X-Ray via collector)
 # ---------------------------------------------------------------------------
 
