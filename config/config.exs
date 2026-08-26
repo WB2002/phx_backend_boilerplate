@@ -242,6 +242,15 @@ config :phx_backend_boilerplate, Oban,
     {Oban.Plugins.Lifeline, rescue_after: :timer.minutes(30)}
   ]
 
+# Auth: JWT secrets and TTLs (secrets overridden per env in dev/test/runtime).
+config :phx_backend_boilerplate, PhxBackendBoilerplate.Accounts,
+  access_ttl: :timer.minutes(15),
+  session_inactivity_ttl: :timer.hours(24 * 7),
+  access_secret: "dev-access-secret-change-me",
+  refresh_secret: "dev-refresh-secret-change-me"
+
+config :phx_backend_boilerplate, PhxBackendBoilerplateWeb.AuthCookies, secure: false
+
 # Import environment specific config. This must remain at the bottom
 # of this file so it overrides the configuration defined above.
 import_config "#{config_env()}.exs"

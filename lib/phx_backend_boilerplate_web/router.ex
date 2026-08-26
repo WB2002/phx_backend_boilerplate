@@ -112,6 +112,18 @@ defmodule PhxBackendBoilerplateWeb.Router do
       by: [:ip]
   end
 
+  pipeline :rate_limit_auth do
+    plug PhxBackendBoilerplateWeb.Plugs.RateLimit,
+      id: "auth",
+      scale: :timer.minutes(1),
+      limit: 10,
+      by: [:ip]
+  end
+
+  pipeline :api_authenticated do
+    plug PhxBackendBoilerplateWeb.Plugs.Authenticate
+  end
+
   pipeline :api_graphql do
     plug :accepts, ["json"]
     plug PhxBackendBoilerplateWeb.Plugs.Deadline
@@ -133,6 +145,21 @@ defmodule PhxBackendBoilerplateWeb.Router do
   end
 
   scope "/api", PhxBackendBoilerplateWeb do
+    scope "/auth" do
+      pipe_through [:api, :rate_limit_auth]
+
+      post "/register", AuthController, :register
+      post "/login", AuthController, :login
+      post "/refresh", AuthController, :refresh
+      post "/logout", AuthController, :logout
+    end
+
+    scope "/auth" do
+      pipe_through [:api, :api_authenticated]
+
+      get "/me", AuthController, :me
+    end
+
     scope "/demo" do
       pipe_through [:api, :rate_limit_demo_login, :recaptcha]
 

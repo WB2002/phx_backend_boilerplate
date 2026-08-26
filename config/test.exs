@@ -109,6 +109,12 @@ config :argon2_elixir,
   t_cost: 1,
   m_cost: 8
 
+config :phx_backend_boilerplate, PhxBackendBoilerplate.Accounts,
+  access_secret: "test-access-secret",
+  refresh_secret: "test-refresh-secret"
+
+config :phx_backend_boilerplate, PhxBackendBoilerplateWeb.AuthCookies, secure: false
+
 # In-memory KMS for unit tests (AES wrap; no AWS). ARN form required by Encryption SDK.
 config :phx_backend_boilerplate, PhxBackendBoilerplate.Crypto,
   key_id: "arn:aws:kms:us-east-1:000000000000:key/00000000-0000-4000-8000-000000000001",

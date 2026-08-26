@@ -357,6 +357,26 @@ if config_env() == :prod do
     ],
     secret_key_base: secret_key_base
 
+  access_secret =
+    System.get_env("ACCESS_TOKEN_SECRET") ||
+      raise """
+      environment variable ACCESS_TOKEN_SECRET is missing.
+      Generate one with: mix phx.gen.secret
+      """
+
+  refresh_secret =
+    System.get_env("REFRESH_TOKEN_SECRET") ||
+      raise """
+      environment variable REFRESH_TOKEN_SECRET is missing.
+      Generate one with: mix phx.gen.secret
+      """
+
+  config :phx_backend_boilerplate, PhxBackendBoilerplate.Accounts,
+    access_secret: access_secret,
+    refresh_secret: refresh_secret
+
+  config :phx_backend_boilerplate, PhxBackendBoilerplateWeb.AuthCookies, secure: true
+
   # ## SSL Support
   #
   # To get SSL working, you will need to add the `https` key
