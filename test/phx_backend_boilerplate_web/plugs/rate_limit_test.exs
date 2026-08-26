@@ -111,6 +111,68 @@ defmodule PhxBackendBoilerplateWeb.Plugs.RateLimitTest do
     assert conn2.status == 429
   end
 
+  test "guest_id bucket uses assign only" do
+    id = "plug_guest_#{:erlang.unique_integer([:positive])}"
+    opts = RateLimit.init(id: id, scale: :timer.minutes(1), limit: 1, by: [:guest_id])
+    guest_id = Ecto.UUID.generate()
+
+    conn1 =
+      build_conn()
+      |> assign(:guest_id, guest_id)
+      |> RateLimit.call(opts)
+
+    conn2 =
+      build_conn()
+      |> assign(:guest_id, guest_id)
+      |> RateLimit.call(opts)
+
+    refute conn1.halted
+    assert conn2.halted
+    assert conn2.status == 429
+  end
+
+  test "guest_id header without assign is skipped" do
+    id = "plug_guest_skip_#{:erlang.unique_integer([:positive])}"
+    opts = RateLimit.init(id: id, scale: :timer.minutes(1), limit: 1, by: [:guest_id])
+
+    conn =
+      build_conn()
+      |> put_req_header("x-guest-id", Ecto.UUID.generate())
+      |> RateLimit.call(opts)
+
+    refute conn.halted
+  end
+
+  test "stripe_signature absent bucket is shared for unsigned requests" do
+    id = "plug_stripe_absent_#{:erlang.unique_integer([:positive])}"
+    opts = RateLimit.init(id: id, scale: :timer.minutes(1), limit: 1, by: [:stripe_signature])
+
+    conn1 = build_conn() |> RateLimit.call(opts)
+    conn2 = build_conn() |> RateLimit.call(opts)
+
+    refute conn1.halted
+    assert conn2.halted
+    assert conn2.status == 429
+  end
+
+  test "stripe_signature present skips the absent bucket" do
+    id = "plug_stripe_present_#{:erlang.unique_integer([:positive])}"
+    opts = RateLimit.init(id: id, scale: :timer.minutes(1), limit: 1, by: [:stripe_signature])
+
+    conn1 =
+      build_conn()
+      |> put_req_header("stripe-signature", "t=1,v1=abc")
+      |> RateLimit.call(opts)
+
+    conn2 =
+      build_conn()
+      |> put_req_header("stripe-signature", "t=2,v1=def")
+      |> RateLimit.call(opts)
+
+    refute conn1.halted
+    refute conn2.halted
+  end
+
   defp call_with_ip(ip, opts) do
     build_conn()
     |> Map.put(:remote_ip, ip)

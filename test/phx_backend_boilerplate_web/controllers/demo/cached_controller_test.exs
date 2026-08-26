@@ -40,6 +40,14 @@ defmodule PhxBackendBoilerplateWeb.Demo.CachedControllerTest do
     assert %{"data" => %{"work_ms" => 2000}, "freshness" => "miss"} = json_response(conn, 200)
   end
 
+  test "returns generic 500 without leaking internal error details", %{conn: conn, key: key} do
+    conn = get(conn, ~p"/api/demo/cached?key=#{key}&error=1")
+
+    assert %{"errors" => %{"detail" => "Internal Server Error"}} = json_response(conn, 500)
+    refute conn.resp_body =~ "econnrefused"
+    refute conn.resp_body =~ "l2"
+  end
+
   test "parallel requests coalesce on cold key", %{key: key} do
     tasks =
       for _ <- 1..8 do

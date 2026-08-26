@@ -17,17 +17,33 @@ defmodule PhxBackendBoilerplateWeb.BillingController do
   end
 
   def create_checkout_session(conn, params) do
-    with {:ok, dto} <- Params.validate(CheckoutSessionDTO, params),
-         user <- Accounts.get_user!(conn.assigns.current_user_id),
-         {:ok, session} <- Billing.create_checkout_session(user, dto.plan) do
-      conn
-      |> put_status(:created)
-      |> json(%{data: session})
+    case Accounts.get_user(conn.assigns.current_user_id) do
+      nil ->
+        unauthorized(conn)
+
+      user ->
+        with {:ok, dto} <- Params.validate(CheckoutSessionDTO, params),
+             {:ok, session} <- Billing.create_checkout_session(user, dto.plan) do
+          conn
+          |> put_status(:created)
+          |> json(%{data: session})
+        end
     end
   end
 
   def me(conn, _params) do
-    user = Accounts.get_user!(conn.assigns.current_user_id)
-    json(conn, %{data: Billing.get_status(user)})
+    case Accounts.get_user(conn.assigns.current_user_id) do
+      nil ->
+        unauthorized(conn)
+
+      user ->
+        json(conn, %{data: Billing.get_status(user)})
+    end
+  end
+
+  defp unauthorized(conn) do
+    conn
+    |> put_status(:unauthorized)
+    |> json(%{errors: %{detail: "Unauthorized"}})
   end
 end

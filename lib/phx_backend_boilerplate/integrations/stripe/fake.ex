@@ -33,6 +33,43 @@ defmodule PhxBackendBoilerplate.Integrations.Stripe.Fake do
     )
   end
 
+  @doc false
+  def retrieve_event(event_id, opts) when is_binary(event_id) and is_list(opts) do
+    record_call({:retrieve_event, event_id, opts})
+
+    cfg = Application.get_env(:phx_backend_boilerplate, __MODULE__, [])
+    results = Keyword.get(cfg, :results, %{})
+
+    case Map.get(results, :retrieve_event) do
+      nil ->
+        events = Keyword.get(cfg, :events, %{})
+
+        case Map.get(events, event_id) do
+          nil -> {:error, :not_found}
+          event -> {:ok, event}
+        end
+
+      result ->
+        result
+    end
+  end
+
+  @doc """
+  Registers a Stripe event payload for `retrieve_event/2` (test helper).
+  """
+  def put_event(%{"id" => event_id} = event) when is_binary(event_id) do
+    cfg = Application.get_env(:phx_backend_boilerplate, __MODULE__, [])
+    events = Keyword.get(cfg, :events, %{})
+
+    Application.put_env(
+      :phx_backend_boilerplate,
+      __MODULE__,
+      Keyword.put(cfg, :events, Map.put(events, event_id, event))
+    )
+
+    :ok
+  end
+
   @doc """
   Returns recorded API calls (test helper).
   """
@@ -46,6 +83,22 @@ defmodule PhxBackendBoilerplate.Integrations.Stripe.Fake do
   """
   def reset do
     Application.put_env(:phx_backend_boilerplate, __MODULE__, [])
+  end
+
+  @doc """
+  Configures a result override for a specific API operation (test helper).
+
+      Fake.stub(:retrieve_subscription, {:error, :timeout})
+  """
+  def stub(operation, result) when is_atom(operation) do
+    cfg = Application.get_env(:phx_backend_boilerplate, __MODULE__, [])
+    results = Keyword.get(cfg, :results, %{})
+
+    Application.put_env(
+      :phx_backend_boilerplate,
+      __MODULE__,
+      Keyword.put(cfg, :results, Map.put(results, operation, result))
+    )
   end
 
   defp record_call(call) do

@@ -12,6 +12,35 @@ Now you can visit [`localhost:4000`](http://localhost:4000) from your browser.
 
 Ready to run in production? Please [check our deployment guides](https://phoenix.hexdocs.pm/deployment.html).
 
+## Health and readiness probes
+
+Unauthenticated JSON endpoints for orchestrators (Kubernetes, ECS, load balancers):
+
+| Endpoint | Purpose | Success | Failure |
+| --- | --- | --- | --- |
+| `GET /health` | Liveness — BEAM process is up | `200 {"status":"ok"}` | n/a (no dependency checks) |
+| `GET /ready` | Readiness — Postgres + Redis reachable | `200 {"status":"ok"}` | `503 {"status":"error","checks":{...}}` |
+
+These routes skip auth, rate limiting, and deadlines. In production, `/health` and `/ready` are excluded from the `force_ssl` HTTPS redirect so sidecars and ALB health checks can probe over HTTP.
+
+Example Kubernetes probes:
+
+```yaml
+livenessProbe:
+  httpGet:
+    path: /health
+    port: 4000
+  periodSeconds: 10
+readinessProbe:
+  httpGet:
+    path: /ready
+    port: 4000
+  periodSeconds: 5
+  failureThreshold: 3
+```
+
+Do not use GraphQL `ping` for probes — it goes through the authenticated GraphQL pipeline.
+
 ## Rate limiting, load shedding, and deadlines
 
 This boilerplate uses three complementary controls:
@@ -747,14 +776,14 @@ curl -H "Range: bytes=0-1023" -o part.bin \
 
 | Setting | Default | Notes |
 | --- | --- | --- |
-| `max_file_bytes` | 100_000_000 | Raise in config + `:parsers` `length` for multi-GB |
+| `max_file_bytes` | 100_000_000 | Raise in config + `:parsers` `upload_length` for multi-GB |
 | `STORAGE_BACKEND` | local | Set `s3` + `S3_BUCKET` (+ `AWS_ENDPOINT_URL` for LocalStack) |
 | `CLAMAV_HOST` / `CLAMAV_PORT` | `127.0.0.1` / `3310` | Fail-closed if unreachable |
-| `CLAMAV_SKIP` | unset | Set `true` to use always-clean scanner (local only; e.g. arm64 without ClamAV) |
+| `CLAMAV_SKIP` | unset | Set `true` for **dev only** (always-clean scanner; e.g. arm64 without ClamAV). **Not allowed outside `:dev`** — boot fails in prod/staging if set. |
 | Upload deadline | 30 minutes | `:api_uploads` pipeline |
 | Upload load shed | `demo_uploads` Static(4) | Concurrent upload cap |
 
-ClamAV starts with `docker compose up -d` (image runs under `platform: linux/amd64` for Apple Silicon). First boot can take a couple of minutes while virus definitions download. Tests use `Files.Scanner.Fake` (no daemon required). For a quick local smoke test without ClamAV: `CLAMAV_SKIP=true mix phx.server`.
+ClamAV starts with `docker compose up -d` (image runs under `platform: linux/amd64` for Apple Silicon). First boot can take a couple of minutes while virus definitions download. Tests use `Files.Scanner.Fake` (no daemon required). For a quick local smoke test without ClamAV: `CLAMAV_SKIP=true mix phx.server` (dev only; do not set in production).
 
 Allowed types (demo): PDF, PNG, JPEG, GIF, WEBP, TXT, CSV, ZIP — see `PhxBackendBoilerplate.Files` config.
 

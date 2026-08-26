@@ -345,12 +345,20 @@ files_runtime = [
   ]
 ]
 
+clamav_skip? = truthy?.(System.get_env("CLAMAV_SKIP"))
+
 files_runtime =
-  case System.get_env("CLAMAV_SKIP") do
-    v when v in ~w(true 1 yes on) ->
+  case PhxBackendBoilerplate.Files.Scanner.resolve_skip_scanner(config_env(), clamav_skip?) do
+    {:error, :skip_not_allowed} ->
+      raise """
+      environment variable CLAMAV_SKIP is not allowed outside :dev.
+      Remove CLAMAV_SKIP and ensure ClamAV is reachable, or uploads will fail closed when the scanner is unavailable.
+      """
+
+    {:ok, PhxBackendBoilerplate.Files.Scanner.AlwaysClean} ->
       Keyword.put(files_runtime, :scanner, PhxBackendBoilerplate.Files.Scanner.AlwaysClean)
 
-    _ ->
+    {:ok, :unchanged} ->
       files_runtime
   end
 

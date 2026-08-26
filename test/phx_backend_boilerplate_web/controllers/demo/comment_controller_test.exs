@@ -40,9 +40,10 @@ defmodule PhxBackendBoilerplateWeb.Demo.CommentControllerTest do
     assert_receive {PubSub, "demo:lobby",
                     %{
                       "event" => "comment_created",
-                      "title" => "Hi",
-                      "email" => "demo@example.com"
+                      "title" => "Hi"
                     }}
+
+    refute_receive {PubSub, "demo:lobby", %{"email" => _}}
   end
 
   test "returns 422 with field errors when required fields are missing", %{conn: conn} do

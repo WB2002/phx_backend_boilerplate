@@ -1,8 +1,10 @@
 defmodule PhxBackendBoilerplateWeb.BillingControllerTest do
   use PhxBackendBoilerplateWeb.ConnCase, async: false
 
+  alias PhxBackendBoilerplate.Accounts
   alias PhxBackendBoilerplate.Integrations.Stripe
   alias PhxBackendBoilerplate.Integrations.Stripe.Fake
+  alias PhxBackendBoilerplate.Repo
 
   @register_attrs %{
     "email" => "billing@example.com",
@@ -27,8 +29,12 @@ defmodule PhxBackendBoilerplateWeb.BillingControllerTest do
     register_conn = Map.put(conn, :remote_ip, unique_ip())
     register_conn = post(register_conn, ~p"/api/auth/register", @register_attrs)
     access_token = json_response(register_conn, 201)["data"]["access_token"]
+    user_id = json_response(register_conn, 201)["data"]["user"]["id"]
 
-    {:ok, conn: build_conn() |> Map.put(:remote_ip, unique_ip()), access_token: access_token}
+    {:ok,
+     conn: build_conn() |> Map.put(:remote_ip, unique_ip()),
+     access_token: access_token,
+     user_id: user_id}
   end
 
   test "GET /api/billing/plans is public", %{conn: conn} do
@@ -87,6 +93,21 @@ defmodule PhxBackendBoilerplateWeb.BillingControllerTest do
       |> get(~p"/api/billing/me")
 
     assert %{"data" => %{"purchases" => [], "subscription" => nil}} = json_response(conn, 200)
+  end
+
+  test "GET /api/billing/me returns 401 when user was deleted but access token is still valid", %{
+    conn: conn,
+    access_token: token,
+    user_id: user_id
+  } do
+    Repo.delete!(Accounts.get_user!(user_id))
+
+    conn =
+      conn
+      |> put_req_header("authorization", "Bearer #{token}")
+      |> get(~p"/api/billing/me")
+
+    assert json_response(conn, 401) == %{"errors" => %{"detail" => "Unauthorized"}}
   end
 
   defp unique_ip do

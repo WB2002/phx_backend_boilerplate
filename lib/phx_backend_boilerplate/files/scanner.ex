@@ -19,4 +19,17 @@ defmodule PhxBackendBoilerplate.Files.Scanner do
     Application.get_env(:phx_backend_boilerplate, PhxBackendBoilerplate.Files, [])
     |> Keyword.get(:scanner, PhxBackendBoilerplate.Files.Scanner.ClamAV)
   end
+
+  @doc false
+  @spec skip_allowed?(atom()) :: boolean()
+  def skip_allowed?(:dev), do: true
+  def skip_allowed?(_env), do: false
+
+  @doc false
+  @spec resolve_skip_scanner(atom(), boolean()) ::
+          {:ok, module()} | {:ok, :unchanged} | {:error, :skip_not_allowed}
+  def resolve_skip_scanner(_env, false), do: {:ok, :unchanged}
+  def resolve_skip_scanner(:dev, true), do: {:ok, PhxBackendBoilerplate.Files.Scanner.AlwaysClean}
+  def resolve_skip_scanner(:test, true), do: {:ok, :unchanged}
+  def resolve_skip_scanner(_env, true), do: {:error, :skip_not_allowed}
 end

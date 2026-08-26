@@ -4,8 +4,7 @@ defmodule PhxBackendBoilerplate.Workers.StripeWebhookJob do
 
   Args:
 
-    * `"stripe_event_id"` (required) — Stripe event id for idempotency
-    * `"event"` (required) — full Stripe event payload map
+    * `"stripe_event_id"` (required) — Stripe event id for idempotency and fetch
   """
 
   use Oban.Worker,
@@ -14,21 +13,19 @@ defmodule PhxBackendBoilerplate.Workers.StripeWebhookJob do
     unique: [fields: [:args], keys: [:stripe_event_id], period: 86_400]
 
   alias PhxBackendBoilerplate.Billing
+  alias PhxBackendBoilerplate.Integrations.Stripe
 
   @impl Oban.Worker
-  def perform(%Oban.Job{args: %{"event" => event}}) do
-    case Billing.handle_event(event) do
-      :ok -> :ok
-      {:ok, :duplicate} -> :ok
-      {:error, reason} -> {:error, reason}
+  def perform(%Oban.Job{args: %{"stripe_event_id" => event_id}}) when is_binary(event_id) do
+    with {:ok, event} <- Stripe.retrieve_event(event_id),
+         result <- Billing.handle_event(event) do
+      case result do
+        :ok -> :ok
+        {:ok, :duplicate} -> :ok
+        {:error, reason} -> {:error, reason}
+      end
     end
   end
 
-  def perform(%Oban.Job{args: args}) do
-    if Map.has_key?(args, "stripe_event_id") do
-      {:error, :missing_event}
-    else
-      {:error, :missing_event}
-    end
-  end
+  def perform(%Oban.Job{}), do: {:error, :missing_stripe_event_id}
 end

@@ -5,6 +5,7 @@ defmodule PhxBackendBoilerplateWeb.Plugs.AuthenticateTest do
 
   alias PhxBackendBoilerplate.Accounts
   alias PhxBackendBoilerplate.Accounts.ExpiredSessions
+  alias PhxBackendBoilerplate.Accounts.ExpiredSessionsTest.CacheStub
   alias PhxBackendBoilerplateWeb.Plugs.Authenticate
 
   @attrs %{"email" => "plug@example.com", "password" => "password123"}
@@ -52,5 +53,45 @@ defmodule PhxBackendBoilerplateWeb.Plugs.AuthenticateTest do
 
     assert conn.halted
     assert conn.status == 401
+  end
+
+  describe "when Redis cache is unavailable" do
+    setup %{auth: auth} do
+      previous = Application.get_env(:phx_backend_boilerplate, ExpiredSessions, [])
+
+      Application.put_env(
+        :phx_backend_boilerplate,
+        ExpiredSessions,
+        Keyword.put(previous, :cache, CacheStub)
+      )
+
+      on_exit(fn ->
+        Application.put_env(:phx_backend_boilerplate, ExpiredSessions, previous)
+      end)
+
+      {:ok, auth: auth}
+    end
+
+    test "allows a valid token when session row still exists", %{conn: conn, auth: auth} do
+      conn =
+        conn
+        |> put_req_header("authorization", "Bearer #{auth.access_token}")
+        |> Authenticate.call(Authenticate.init([]))
+
+      refute conn.halted
+      assert conn.assigns.current_user_id == auth.user.id
+    end
+
+    test "rejects token when session row was deleted", %{conn: conn, auth: auth} do
+      :ok = Accounts.logout(auth.session.id)
+
+      conn =
+        conn
+        |> put_req_header("authorization", "Bearer #{auth.access_token}")
+        |> Authenticate.call(Authenticate.init([]))
+
+      assert conn.halted
+      assert conn.status == 401
+    end
   end
 end

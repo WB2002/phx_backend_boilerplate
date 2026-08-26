@@ -30,6 +30,14 @@ defmodule PhxBackendBoilerplate.Integrations.StripeTest do
     assert [{:create_customer, "buyer@example.com", _opts}] = Fake.calls()
   end
 
+  test "create_customer/2 forwards idempotency key" do
+    assert {:ok, %{"id" => _id}} =
+             Stripe.create_customer("buyer@example.com", idempotency_key: "customer-user-id")
+
+    assert [{:create_customer, "buyer@example.com", opts}] = Fake.calls()
+    assert Keyword.get(opts, :idempotency_key) == "customer-user-id"
+  end
+
   test "create_checkout_session/2 records params" do
     params = %{
       "mode" => "payment",

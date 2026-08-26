@@ -2,6 +2,7 @@ defmodule PhxBackendBoilerplateWeb.AuthControllerTest do
   use PhxBackendBoilerplateWeb.ConnCase, async: false
 
   alias PhxBackendBoilerplate.Accounts
+  alias PhxBackendBoilerplate.Repo
   alias PhxBackendBoilerplateWeb.AuthCookies
 
   @register_attrs %{
@@ -68,11 +69,13 @@ defmodule PhxBackendBoilerplateWeb.AuthControllerTest do
     setup %{conn: conn} do
       conn = post(conn, ~p"/api/auth/register", @register_attrs)
       access_token = json_response(conn, 201)["data"]["access_token"]
+      user_id = json_response(conn, 201)["data"]["user"]["id"]
       refresh_cookie = Map.fetch!(conn.resp_cookies, AuthCookies.cookie_name())
 
       {:ok,
        conn: build_conn(),
        access_token: access_token,
+       user_id: user_id,
        refresh_cookie: refresh_cookie,
        refresh_value: refresh_cookie.value}
     end
@@ -90,6 +93,21 @@ defmodule PhxBackendBoilerplateWeb.AuthControllerTest do
     test "GET /me returns 401 without a token", %{conn: conn} do
       conn = get(conn, ~p"/api/auth/me")
       assert json_response(conn, 401) == %{"errors" => %{"detail" => "Unauthorized"}}
+    end
+
+    test "GET /me returns 401 when user was deleted but access token is still valid", %{
+      conn: conn,
+      access_token: access_token,
+      user_id: user_id
+    } do
+      Repo.delete!(Accounts.get_user!(user_id))
+
+      me_conn =
+        conn
+        |> put_req_header("authorization", "Bearer #{access_token}")
+        |> get(~p"/api/auth/me")
+
+      assert json_response(me_conn, 401) == %{"errors" => %{"detail" => "Unauthorized"}}
     end
 
     test "POST /refresh returns a new access token", %{

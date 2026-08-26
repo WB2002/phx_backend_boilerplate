@@ -25,15 +25,21 @@ defmodule PhxBackendBoilerplate.Jobs do
   @max_work_ms 2_000
 
   @doc """
-  Enqueues a `StripeWebhookJob` with the full Stripe event payload.
+  Enqueues a `StripeWebhookJob` with only the Stripe event id.
 
-  Uses `stripe_event_id` for Oban unique job deduplication.
+  The worker fetches the full payload from Stripe. Uses `stripe_event_id`
+  for Oban unique job deduplication.
   """
-  @spec enqueue_stripe_webhook(map()) :: {:ok, Oban.Job.t()} | {:error, Ecto.Changeset.t()}
-  def enqueue_stripe_webhook(%{"id" => event_id} = event) when is_binary(event_id) do
-    %{"stripe_event_id" => event_id, "event" => event}
+  @spec enqueue_stripe_webhook(String.t() | map()) ::
+          {:ok, Oban.Job.t()} | {:error, Ecto.Changeset.t()}
+  def enqueue_stripe_webhook(event_id) when is_binary(event_id) do
+    %{"stripe_event_id" => event_id}
     |> StripeWebhookJob.new()
     |> Oban.insert()
+  end
+
+  def enqueue_stripe_webhook(%{"id" => event_id}) when is_binary(event_id) do
+    enqueue_stripe_webhook(event_id)
   end
 
   def enqueue_stripe_webhook(_event), do: {:error, invalid_event_changeset()}

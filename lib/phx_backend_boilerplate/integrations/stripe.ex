@@ -25,15 +25,22 @@ defmodule PhxBackendBoilerplate.Integrations.Stripe do
   @doc """
   Creates a Stripe Customer for `email`.
 
+  Optional `:idempotency_key` in opts is forwarded to Stripe.
+
   Returns `{:ok, customer_map}` or `{:error, reason}`.
   """
-  @spec create_customer(String.t()) :: {:ok, map()} | {:error, term()}
-  def create_customer(email) when is_binary(email) do
+  @spec create_customer(String.t(), keyword()) :: {:ok, map()} | {:error, term()}
+  def create_customer(email, opts \\ []) when is_binary(email) and is_list(opts) do
     if skip?() do
       {:error, :skipped}
     else
       with {:ok, secret_key} <- fetch_secret_key() do
-        adapter().create_customer(email, merged_opts(secret_key: secret_key))
+        idempotency_key = Keyword.get(opts, :idempotency_key)
+
+        adapter().create_customer(
+          email,
+          merged_opts(secret_key: secret_key, idempotency_key: idempotency_key)
+        )
       end
     end
   end
@@ -71,6 +78,20 @@ defmodule PhxBackendBoilerplate.Integrations.Stripe do
     else
       with {:ok, secret_key} <- fetch_secret_key() do
         adapter().retrieve_subscription(subscription_id, merged_opts(secret_key: secret_key))
+      end
+    end
+  end
+
+  @doc """
+  Retrieves a Stripe Event by id.
+  """
+  @spec retrieve_event(String.t()) :: {:ok, map()} | {:error, term()}
+  def retrieve_event(event_id) when is_binary(event_id) do
+    if skip?() do
+      {:error, :skipped}
+    else
+      with {:ok, secret_key} <- fetch_secret_key() do
+        adapter().retrieve_event(event_id, merged_opts(secret_key: secret_key))
       end
     end
   end

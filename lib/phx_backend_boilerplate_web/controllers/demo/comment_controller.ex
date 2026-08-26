@@ -4,7 +4,7 @@ defmodule PhxBackendBoilerplateWeb.Demo.CommentController do
 
   Stateless echo of a validated `CommentDTO` — no database table.
   After a successful create, broadcasts `comment_created` on `demo:lobby`
-  so websocket subscribers can observe REST → PubSub fan-out.
+  (title only — no PII) so websocket subscribers can observe REST → PubSub fan-out.
   """
 
   use PhxBackendBoilerplateWeb, :controller
@@ -20,8 +20,7 @@ defmodule PhxBackendBoilerplateWeb.Demo.CommentController do
       :ok =
         PubSub.broadcast("demo:lobby", %{
           "event" => "comment_created",
-          "title" => dto.title,
-          "email" => dto.email
+          "title" => dto.title
         })
 
       json(conn, %{

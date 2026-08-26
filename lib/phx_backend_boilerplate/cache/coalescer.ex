@@ -2,12 +2,22 @@ defmodule PhxBackendBoilerplate.Cache.Coalescer do
   @moduledoc """
   Per-node request coalescing (singleflight).
 
-  Concurrent misses for the same key on one VM share one leader. Waiters
-  await the leader's result. If the leader dies, waiters get
-  `{:error, :coalescer_crash}` and a later `fetch/3` can elect a new leader.
+  One named GenServer per VM. Concurrent misses for the same key share one
+  leader; leader work runs in the caller process. Waiters await the leader's
+  result with a timeout aligned to `PhxBackendBoilerplate.Deadline` when set,
+  otherwise the app default (15s).
+
+  Returns:
+
+    * whatever `fun` returns for the leader
+    * the leader's result for waiters
+    * `{:error, :coalescer_crash}` if the leader dies
+    * `{:error, :deadline_exceeded}` if the budget expires before join or while waiting
   """
 
   use GenServer
+
+  alias PhxBackendBoilerplate.Deadline
 
   @doc false
   def start_link(opts \\ []) do
@@ -18,17 +28,13 @@ defmodule PhxBackendBoilerplate.Cache.Coalescer do
   Runs `fun` as the coalescer leader for `key`, or awaits an existing leader.
 
   Returns whatever `fun` returns for the leader, or the leader's result for
-  waiters. On leader crash: `{:error, :coalescer_crash}`.
+  waiters. On leader crash: `{:error, :coalescer_crash}`. On timeout:
+  `{:error, :deadline_exceeded}`.
   """
   def run(key, fun) when is_binary(key) and is_function(fun, 0) do
-    case GenServer.call(__MODULE__, {:join, key}, :infinity) do
-      :leader ->
-        lead(key, fun)
-
-      {:await, ref} ->
-        receive do
-          {^ref, result} -> result
-        end
+    case timeout_ms() do
+      0 -> {:error, :deadline_exceeded}
+      timeout -> join_and_run(key, fun, timeout)
     end
   end
 
@@ -73,15 +79,40 @@ defmodule PhxBackendBoilerplate.Cache.Coalescer do
     {:reply, pid, state}
   end
 
-  def handle_call({:done, key, result}, {from_pid, _}, state) do
+  @impl true
+  def handle_cast({:done, key, from_pid, result}, state) do
     case Map.get(state.keys, key) do
       %{leader: ^from_pid, monitor_ref: ref, waiters: waiters} ->
         Process.demonitor(ref, [:flush])
         notify_waiters(waiters, result)
-        {:reply, :ok, %{state | keys: Map.delete(state.keys, key)}}
+        {:noreply, %{state | keys: Map.delete(state.keys, key)}}
 
       _ ->
-        {:reply, :ok, state}
+        {:noreply, state}
+    end
+  end
+
+  def handle_cast({:leave, key, pid, ref}, state) do
+    case Map.get(state.keys, key) do
+      %{waiters: waiters} = entry ->
+        waiters = Enum.reject(waiters, fn {w_pid, w_ref} -> w_pid == pid and w_ref == ref end)
+        entry = %{entry | waiters: waiters}
+        {:noreply, put_in(state.keys[key], entry)}
+
+      _ ->
+        {:noreply, state}
+    end
+  end
+
+  def handle_cast({:cancel, key, pid}, state) do
+    case Map.get(state.keys, key) do
+      %{leader: ^pid, monitor_ref: ref, waiters: waiters} ->
+        Process.demonitor(ref, [:flush])
+        notify_waiters(waiters, {:error, :deadline_exceeded})
+        {:noreply, %{state | keys: Map.delete(state.keys, key)}}
+
+      _ ->
+        {:noreply, state}
     end
   end
 
@@ -97,17 +128,64 @@ defmodule PhxBackendBoilerplate.Cache.Coalescer do
     end
   end
 
+  defp join_and_run(key, fun, timeout) do
+    try do
+      case GenServer.call(__MODULE__, {:join, key}, timeout) do
+        :leader ->
+          lead(key, fun)
+
+        {:await, ref} ->
+          await_result(key, ref, timeout)
+      end
+    catch
+      :exit, {:timeout, _} ->
+        GenServer.cast(__MODULE__, {:cancel, key, self()})
+        {:error, :deadline_exceeded}
+    end
+  end
+
+  defp await_result(key, ref, timeout) do
+    receive do
+      {^ref, result} -> result
+    after
+      timeout ->
+        GenServer.cast(__MODULE__, {:leave, key, self(), ref})
+        flush_late(ref)
+        {:error, :deadline_exceeded}
+    end
+  end
+
+  defp flush_late(ref) do
+    receive do
+      {^ref, _} -> :ok
+    after
+      0 -> :ok
+    end
+  end
+
   defp lead(key, fun) do
     try do
       result = fun.()
-      GenServer.call(__MODULE__, {:done, key, result}, :infinity)
+      GenServer.cast(__MODULE__, {:done, key, self(), result})
       result
     catch
       kind, reason ->
-        # Best-effort notify; GenServer may already have handled :DOWN.
-        _ = GenServer.call(__MODULE__, {:done, key, {:error, :coalescer_crash}}, :infinity)
+        GenServer.cast(__MODULE__, {:done, key, self(), {:error, :coalescer_crash}})
         :erlang.raise(kind, reason, __STACKTRACE__)
     end
+  end
+
+  defp timeout_ms do
+    case Deadline.remaining() do
+      nil -> default_timeout_ms()
+      0 -> 0
+      ms -> ms
+    end
+  end
+
+  defp default_timeout_ms do
+    Application.get_env(:phx_backend_boilerplate, Deadline, [])
+    |> Keyword.get(:timeout, 15_000)
   end
 
   defp notify_waiters(waiters, result) do

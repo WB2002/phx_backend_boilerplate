@@ -4,6 +4,7 @@ defmodule PhxBackendBoilerplate.BillingTest do
   alias PhxBackendBoilerplate.Accounts
   alias PhxBackendBoilerplate.Billing
   alias PhxBackendBoilerplate.Billing.Purchase
+  alias PhxBackendBoilerplate.Billing.StripeEvent
   alias PhxBackendBoilerplate.Billing.Subscription
   alias PhxBackendBoilerplate.Integrations.Stripe
   alias PhxBackendBoilerplate.Integrations.Stripe.Fake
@@ -50,8 +51,61 @@ defmodule PhxBackendBoilerplate.BillingTest do
     assert is_binary(updated.stripe_customer_id)
 
     assert Enum.any?(Fake.calls(), fn
-             {:create_customer, "auth@example.com", _} -> true
+             {:create_customer, "auth@example.com", opts} ->
+               Keyword.get(opts, :idempotency_key) == "customer-#{user.id}"
+
+             _ ->
+               false
+           end)
+  end
+
+  test "create_checkout_session/2 reuses existing stripe customer", %{auth: auth} do
+    user = auth.user
+    existing_id = "cus_existing_123"
+
+    user
+    |> Ecto.Changeset.change(stripe_customer_id: existing_id)
+    |> Repo.update!()
+
+    assert {:ok, _session} = Billing.create_checkout_session(user, "lifetime")
+
+    refute Enum.any?(Fake.calls(), fn
+             {:create_customer, _, _} -> true
              _ -> false
+           end)
+
+    assert Accounts.get_user!(user.id).stripe_customer_id == existing_id
+  end
+
+  test "create_checkout_session/2 concurrent checkouts persist one customer id", %{auth: auth} do
+    user = auth.user
+
+    tasks =
+      for _ <- 1..2 do
+        Task.async(fn -> Billing.create_checkout_session(user, "lifetime") end)
+      end
+
+    results = Enum.map(tasks, &Task.await/1)
+    assert Enum.all?(results, &match?({:ok, _}, &1))
+
+    persisted = Accounts.get_user!(user.id).stripe_customer_id
+    assert is_binary(persisted)
+
+    create_calls =
+      Fake.calls()
+      |> Enum.filter(fn
+        {:create_customer, _, _} -> true
+        _ -> false
+      end)
+
+    assert length(create_calls) == 2
+
+    assert Enum.all?(create_calls, fn
+             {:create_customer, "auth@example.com", opts} ->
+               Keyword.get(opts, :idempotency_key) == "customer-#{user.id}"
+
+             _ ->
+               false
            end)
   end
 
@@ -73,25 +127,112 @@ defmodule PhxBackendBoilerplate.BillingTest do
   end
 
   test "handle_event/1 upserts subscription", %{auth: auth} do
-    event = checkout_completed_event(auth.user.id, "pro", "subscription", "sub_test_123")
+    event =
+      checkout_completed_event(auth.user.id, "pro", "subscription",
+        subscription_id: "sub_test_123"
+      )
 
     assert :ok = Billing.handle_event(event)
     assert [%Subscription{plan: "pro", status: "active"}] = Repo.all(Subscription)
   end
 
+  test "handle_event/1 updates existing subscription on customer.subscription.updated", %{
+    auth: auth
+  } do
+    subscription_id = "sub_test_123"
+
+    assert :ok =
+             Billing.handle_event(
+               checkout_completed_event(auth.user.id, "pro", "subscription",
+                 subscription_id: subscription_id,
+                 event_id: "evt_checkout_sub"
+               )
+             )
+
+    update_event = %{
+      "id" => "evt_sub_updated",
+      "type" => "customer.subscription.updated",
+      "data" => %{
+        "object" => %{
+          "id" => subscription_id,
+          "status" => "canceled",
+          "current_period_end" => System.system_time(:second) + 86_400,
+          "metadata" => %{"user_id" => auth.user.id},
+          "items" => %{"data" => [%{"price" => %{"id" => "price_fake_pro"}}]}
+        }
+      }
+    }
+
+    assert :ok = Billing.handle_event(update_event)
+    assert [%Subscription{status: "canceled"}] = Repo.all(Subscription)
+    assert length(Repo.all(Subscription)) == 1
+  end
+
   test "handle_event/1 is idempotent", %{auth: auth} do
-    event = checkout_completed_event(auth.user.id, "lifetime", "payment")
+    event =
+      checkout_completed_event(auth.user.id, "lifetime", "payment", event_id: "evt_idempotent")
 
     assert :ok = Billing.handle_event(event)
     assert {:ok, :duplicate} = Billing.handle_event(event)
     assert length(Repo.all(Purchase)) == 1
+    assert length(Repo.all(StripeEvent)) == 1
+  end
+
+  test "handle_event/1 returns error when purchase user_id is invalid" do
+    bad_user_id = Ecto.UUID.generate()
+    event = checkout_completed_event(bad_user_id, "lifetime", "payment", event_id: "evt_bad_user")
+
+    assert {:error, %Ecto.Changeset{}} = Billing.handle_event(event)
+    assert Repo.all(Purchase) == []
+    assert Repo.all(StripeEvent) == []
+  end
+
+  test "handle_event/1 returns error when Stripe retrieve fails", %{auth: auth} do
+    Fake.stub(:retrieve_subscription, {:error, :timeout})
+
+    event =
+      checkout_completed_event(
+        auth.user.id,
+        "pro",
+        "subscription",
+        subscription_id: "sub_timeout",
+        event_id: "evt_stripe_fail"
+      )
+
+    assert {:error, :timeout} = Billing.handle_event(event)
+    assert Repo.all(Subscription) == []
+    assert Repo.all(StripeEvent) == []
+  end
+
+  test "handle_event/1 succeeds on retry after Stripe retrieve failure", %{auth: auth} do
+    event =
+      checkout_completed_event(
+        auth.user.id,
+        "pro",
+        "subscription",
+        subscription_id: "sub_retry",
+        event_id: "evt_retry"
+      )
+
+    Fake.stub(:retrieve_subscription, {:error, :timeout})
+    assert {:error, :timeout} = Billing.handle_event(event)
+    assert Repo.all(Subscription) == []
+    assert Repo.all(StripeEvent) == []
+
+    Fake.reset()
+
+    assert :ok = Billing.handle_event(event)
+    assert [%Subscription{plan: "pro", status: "active"}] = Repo.all(Subscription)
+    assert length(Repo.all(StripeEvent)) == 1
   end
 
   test "get_status/0 returns purchases and subscription", %{auth: auth} do
     :ok = Billing.handle_event(checkout_completed_event(auth.user.id, "lifetime", "payment"))
 
     :ok =
-      Billing.handle_event(checkout_completed_event(auth.user.id, "pro", "subscription", "sub_1"))
+      Billing.handle_event(
+        checkout_completed_event(auth.user.id, "pro", "subscription", subscription_id: "sub_1")
+      )
 
     status = Billing.get_status(auth.user)
 
@@ -103,7 +244,10 @@ defmodule PhxBackendBoilerplate.BillingTest do
     %{"email" => "auth@example.com", "password" => "password123"}
   end
 
-  defp checkout_completed_event(user_id, plan, mode, subscription_id \\ nil) do
+  defp checkout_completed_event(user_id, plan, mode, opts \\ []) do
+    event_id = Keyword.get(opts, :event_id, "evt_#{plan}_#{System.unique_integer()}")
+    subscription_id = Keyword.get(opts, :subscription_id)
+
     session = %{
       "id" => "cs_test_#{plan}",
       "mode" => mode,
@@ -114,7 +258,7 @@ defmodule PhxBackendBoilerplate.BillingTest do
     }
 
     %{
-      "id" => "evt_#{plan}_#{System.unique_integer()}",
+      "id" => event_id,
       "type" => "checkout.session.completed",
       "data" => %{"object" => session}
     }

@@ -2,7 +2,8 @@ defmodule PhxBackendBoilerplate.Flags.Guest do
   @moduledoc """
   Actor used for per-guest feature flag gates (e.g. `:demo_beta`).
 
-  Identity is the guest UUID from `EnsureGuestId` / `x-guest-id`.
+  Identity is the guest UUID from `EnsureGuestId` (cookie-first, then
+  `x-guest-id` header on first visit).
   """
 
   defstruct [:id]

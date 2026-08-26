@@ -55,7 +55,14 @@ defmodule PhxBackendBoilerplateWeb.AuthCookies do
     ]
   end
 
-  defp secure? do
+  @doc """
+  Whether auth and guest cookies should include the `Secure` flag.
+
+  Driven by `config :phx_backend_boilerplate, PhxBackendBoilerplateWeb.AuthCookies, secure: ...`
+  (enabled in production via `config/runtime.exs`).
+  """
+  @spec secure?() :: boolean()
+  def secure? do
     Application.get_env(
       :phx_backend_boilerplate,
       PhxBackendBoilerplateWeb.AuthCookies,

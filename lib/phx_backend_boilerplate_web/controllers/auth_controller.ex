@@ -72,14 +72,18 @@ defmodule PhxBackendBoilerplateWeb.AuthController do
   end
 
   def me(conn, _params) do
-    user = Accounts.get_user!(conn.assigns.current_user_id)
+    case Accounts.get_user(conn.assigns.current_user_id) do
+      nil ->
+        unauthorized(conn, "Unauthorized")
 
-    json(conn, %{
-      data: %{
-        id: user.id,
-        email: user.email
-      }
-    })
+      user ->
+        json(conn, %{
+          data: %{
+            id: user.id,
+            email: user.email
+          }
+        })
+    end
   end
 
   defp auth_payload(auth) do

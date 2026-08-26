@@ -1,12 +1,17 @@
 defmodule PhxBackendBoilerplateWeb.Router do
   use PhxBackendBoilerplateWeb, :router
 
+  # Orchestrator probes — no auth, rate limit, deadline, or guest cookie.
+  pipeline :probe do
+    plug :accepts, ["json"]
+  end
+
   pipeline :api do
     plug :accepts, ["json"]
     plug PhxBackendBoilerplateWeb.Plugs.Deadline
   end
 
-  # Public APIs only — mints/persists guest_id via cookie + X-Guest-Id
+  # Public APIs only — mints/persists guest_id via cookie (header bootstrap only when no cookie)
   pipeline :api_public do
     plug :accepts, ["json"]
     plug PhxBackendBoilerplateWeb.Plugs.Deadline
@@ -136,6 +141,14 @@ defmodule PhxBackendBoilerplateWeb.Router do
       by: [:ip]
   end
 
+  pipeline :rate_limit_stripe_webhook do
+    plug PhxBackendBoilerplateWeb.Plugs.RateLimit,
+      id: "stripe_webhook",
+      scale: :timer.minutes(1),
+      limit: 120,
+      by: [:ip, :stripe_signature]
+  end
+
   pipeline :api_authenticated do
     plug PhxBackendBoilerplateWeb.Plugs.Authenticate
   end
@@ -143,13 +156,26 @@ defmodule PhxBackendBoilerplateWeb.Router do
   pipeline :api_graphql do
     plug :accepts, ["json"]
     plug PhxBackendBoilerplateWeb.Plugs.Deadline
+    plug PhxBackendBoilerplateWeb.Plugs.Authenticate
+    plug PhxBackendBoilerplateWeb.Plugs.GraphqlQueryLimit
+    plug PhxBackendBoilerplateWeb.Plugs.GraphqlContext
   end
 
   # Large multipart uploads: long deadline + concurrency cap.
-  # Response is JSON; request body is multipart/form-data via Plug.Parsers.
+  # Response is JSON; request body is multipart/form-data via a dedicated Plug.Parsers.
   pipeline :api_uploads do
     plug :accepts, ["json"]
     plug PhxBackendBoilerplateWeb.Plugs.Deadline, timeout: :timer.minutes(30)
+
+    plug PhxBackendBoilerplateWeb.Plugs.Parsers,
+      parsers: [:multipart],
+      pass: ["*/*"],
+      length:
+        Application.compile_env(
+          :phx_backend_boilerplate,
+          [:parsers, :upload_length],
+          500_000_000
+        )
   end
 
   pipeline :load_shed_demo_expensive do
@@ -158,6 +184,13 @@ defmodule PhxBackendBoilerplateWeb.Router do
 
   pipeline :load_shed_demo_uploads do
     plug PhxBackendBoilerplateWeb.Plugs.LoadShed, regulator: :demo_uploads
+  end
+
+  scope "/", PhxBackendBoilerplateWeb do
+    pipe_through :probe
+
+    get "/health", HealthController, :health
+    get "/ready", HealthController, :ready
   end
 
   scope "/api", PhxBackendBoilerplateWeb do
@@ -260,7 +293,7 @@ defmodule PhxBackendBoilerplateWeb.Router do
     end
 
     scope "/webhooks" do
-      pipe_through :api
+      pipe_through [:api, :rate_limit_stripe_webhook]
 
       post "/stripe", Webhooks.StripeController, :create
     end
@@ -269,7 +302,11 @@ defmodule PhxBackendBoilerplateWeb.Router do
   scope "/api" do
     pipe_through [:api_graphql, :rate_limit_graphql]
 
-    forward "/graphql", Absinthe.Plug, schema: PhxBackendBoilerplateWeb.Graphql.Schema
+    forward "/graphql", Absinthe.Plug,
+      schema: PhxBackendBoilerplateWeb.Graphql.Schema,
+      analyze_complexity: true,
+      max_complexity: PhxBackendBoilerplateWeb.Graphql.Config.max_complexity(),
+      token_limit: PhxBackendBoilerplateWeb.Graphql.Config.token_limit()
   end
 
   # Enable LiveDashboard, Oban Web, FunWithFlags UI, GraphiQL, and Swoosh mailbox preview in development

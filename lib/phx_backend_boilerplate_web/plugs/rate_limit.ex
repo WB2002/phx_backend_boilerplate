@@ -9,14 +9,16 @@ defmodule PhxBackendBoilerplateWeb.Plugs.RateLimit do
     * `:limit` — max hits allowed in the window (required)
     * `:by` — list of attributes to check independently (default `[:ip]`)
 
-  Allowed `:by` atoms: `:ip`, `:user_id`, `:fingerprint`, `:guest_id`.
+  Allowed `:by` atoms: `:ip`, `:user_id`, `:fingerprint`, `:guest_id`, `:stripe_signature`.
 
   Each configured attribute gets its own Redis key shaped like
   `{id}:{attr}:{value}`. The request is denied if **any**
   bucket exceeds the limit. Missing optional attributes are skipped
-  (`:user_id`, `:fingerprint`). `:guest_id` is read from
-  `conn.assigns.guest_id`, then `x-guest-id`, then the `guest_id` cookie
-  (run `EnsureGuestId` on public pipelines to mint when absent).
+  (`:user_id`, `:fingerprint`, `:stripe_signature` when present).
+  `:guest_id` is read only from `conn.assigns.guest_id` — run
+  `EnsureGuestId` on public pipelines before rate limiting.
+  `:stripe_signature` uses `"absent"` when the header is missing (for
+  cluster-wide unsigned flood protection) and is skipped when present.
 
   On deny, responds with `429`, a `Retry-After` header (seconds), and JSON:
 
@@ -35,7 +37,7 @@ defmodule PhxBackendBoilerplateWeb.Plugs.RateLimit do
 
   @behaviour Plug
 
-  @allowed_by [:ip, :user_id, :fingerprint, :guest_id]
+  @allowed_by [:ip, :user_id, :fingerprint, :guest_id, :stripe_signature]
 
   @impl true
   def init(opts) do
@@ -97,15 +99,15 @@ defmodule PhxBackendBoilerplateWeb.Plugs.RateLimit do
   end
 
   defp resolve_value(conn, :guest_id) do
-    assign_id = Map.get(conn.assigns, :guest_id)
-    header_id = conn |> get_req_header("x-guest-id") |> List.first()
-    cookie_id = conn.cookies["guest_id"]
+    conn.assigns
+    |> Map.get(:guest_id)
+    |> present_or_nil()
+  end
 
-    cond do
-      present?(assign_id) -> assign_id
-      present?(header_id) -> header_id
-      present?(cookie_id) -> cookie_id
-      true -> nil
+  defp resolve_value(conn, :stripe_signature) do
+    case conn |> get_req_header("stripe-signature") |> List.first() |> present_or_nil() do
+      nil -> "absent"
+      _present -> nil
     end
   end
 
@@ -147,7 +149,4 @@ defmodule PhxBackendBoilerplateWeb.Plugs.RateLimit do
   end
 
   defp present_or_nil(_), do: nil
-
-  defp present?(value) when is_binary(value), do: String.trim(value) != ""
-  defp present?(_), do: false
 end

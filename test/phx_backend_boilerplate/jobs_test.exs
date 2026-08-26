@@ -6,6 +6,7 @@ defmodule PhxBackendBoilerplate.JobsTest do
   alias PhxBackendBoilerplate.Jobs
   alias PhxBackendBoilerplate.RequestContext
   alias PhxBackendBoilerplate.Workers.DemoJob
+  alias PhxBackendBoilerplate.Workers.StripeWebhookJob
 
   setup do
     Fake.reset()
@@ -19,6 +20,19 @@ defmodule PhxBackendBoilerplate.JobsTest do
     assert {:ok, %Oban.Job{}} = Jobs.enqueue_demo(%{"message" => "hello", "work_ms" => 0})
 
     assert_enqueued(worker: DemoJob, args: %{"message" => "hello", "work_ms" => 0})
+  end
+
+  test "enqueue_stripe_webhook stores only stripe_event_id in args" do
+    assert {:ok, %Oban.Job{args: args}} = Jobs.enqueue_stripe_webhook("evt_jobs_test")
+
+    assert args == %{"stripe_event_id" => "evt_jobs_test"}
+    assert_enqueued(worker: StripeWebhookJob, args: %{"stripe_event_id" => "evt_jobs_test"})
+  end
+
+  test "enqueue_stripe_webhook accepts event map with id" do
+    assert {:ok, _} = Jobs.enqueue_stripe_webhook(%{"id" => "evt_from_map", "type" => "ping"})
+
+    assert_enqueued(worker: StripeWebhookJob, args: %{"stripe_event_id" => "evt_from_map"})
   end
 
   test "enqueue_demo copies request context into args" do

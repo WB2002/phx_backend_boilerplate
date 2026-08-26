@@ -49,6 +49,15 @@ defmodule PhxBackendBoilerplate.Observability.LocalstackTest do
         @log_stream
       )
 
+    logs_config = %{
+      log_group: @log_group,
+      log_stream: @log_stream,
+      flush_interval_ms: 300,
+      max_batch: 10
+    }
+
+    start_supervised!({PhxBackendBoilerplate.Observability.CloudWatchLogHandler, logs_config})
+
     :ok = PhxBackendBoilerplate.Observability.attach_cloudwatch_logs!()
     :ok
   end

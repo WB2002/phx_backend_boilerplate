@@ -17,7 +17,7 @@ defmodule PhxBackendBoilerplateWeb.Webhooks.StripeController do
     with {:ok, secret} <- Stripe.webhook_secret(),
          :ok <- Signature.verify(payload, stripe_signature(conn), secret: secret),
          {:ok, event} <- Jason.decode(payload),
-         {:ok, _job} <- Jobs.enqueue_stripe_webhook(event) do
+         {:ok, _job} <- Jobs.enqueue_stripe_webhook(event["id"]) do
       send_resp(conn, :ok, "")
     else
       {:error, :missing_header} ->

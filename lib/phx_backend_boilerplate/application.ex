@@ -10,27 +10,30 @@ defmodule PhxBackendBoilerplate.Application do
     # Finch must start before ExAws/CloudWatch exporters use it.
     children =
       [
-        {Finch, name: PhxBackendBoilerplate.Finch},
-        PhxBackendBoilerplateWeb.Telemetry,
-        PhxBackendBoilerplate.Repo,
-        {Oban, Application.fetch_env!(:phx_backend_boilerplate, Oban)},
-        {DNSCluster,
-         query: Application.get_env(:phx_backend_boilerplate, :dns_cluster_query) || :ignore},
-        {Phoenix.PubSub, name: PhxBackendBoilerplate.PubSub},
-        FunWithFlags.Supervisor,
-        {PhxBackendBoilerplate.RateLimit,
-         Application.fetch_env!(:phx_backend_boilerplate, PhxBackendBoilerplate.RateLimit)},
-        PhxBackendBoilerplate.LoadShed,
-        {PhxBackendBoilerplate.Cache, []},
-        PhxBackendBoilerplate.Cache.Coalescer,
-        {Task.Supervisor, name: PhxBackendBoilerplate.Cache.TaskSupervisor},
-        PhxBackendBoilerplate.Integrations.Example,
-        PhxBackendBoilerplate.Integrations.Slack.WebAPI,
-        PhxBackendBoilerplate.Integrations.Stripe.Api,
-        # Start to serve requests, typically the last entry
-        PhxBackendBoilerplateWeb.Endpoint,
-        {Absinthe.Subscription, PhxBackendBoilerplateWeb.Endpoint}
-      ]
+        {Finch, name: PhxBackendBoilerplate.Finch}
+      ] ++
+        cloudwatch_log_handler_children() ++
+        [
+          PhxBackendBoilerplateWeb.Telemetry,
+          PhxBackendBoilerplate.Repo,
+          {Oban, Application.fetch_env!(:phx_backend_boilerplate, Oban)},
+          {DNSCluster,
+           query: Application.get_env(:phx_backend_boilerplate, :dns_cluster_query) || :ignore},
+          {Phoenix.PubSub, name: PhxBackendBoilerplate.PubSub},
+          FunWithFlags.Supervisor,
+          {PhxBackendBoilerplate.RateLimit,
+           Application.fetch_env!(:phx_backend_boilerplate, PhxBackendBoilerplate.RateLimit)},
+          PhxBackendBoilerplate.LoadShed,
+          {PhxBackendBoilerplate.Cache, []},
+          PhxBackendBoilerplate.Cache.Coalescer,
+          {Task.Supervisor, name: PhxBackendBoilerplate.Cache.TaskSupervisor},
+          PhxBackendBoilerplate.Integrations.Example,
+          PhxBackendBoilerplate.Integrations.Slack.WebAPI,
+          PhxBackendBoilerplate.Integrations.Stripe.Api,
+          # Start to serve requests, typically the last entry
+          PhxBackendBoilerplateWeb.Endpoint,
+          {Absinthe.Subscription, PhxBackendBoilerplateWeb.Endpoint}
+        ]
 
     :ok = PhxBackendBoilerplate.Observability.setup_tracing!()
 
@@ -52,5 +55,17 @@ defmodule PhxBackendBoilerplate.Application do
   def config_change(changed, _new, removed) do
     PhxBackendBoilerplateWeb.Endpoint.config_change(changed, removed)
     :ok
+  end
+
+  defp cloudwatch_log_handler_children do
+    if PhxBackendBoilerplate.Observability.cloudwatch_logs_enabled?() do
+      config =
+        PhxBackendBoilerplate.Observability.cloudwatch_logs_config()
+        |> Map.new()
+
+      [{PhxBackendBoilerplate.Observability.CloudWatchLogHandler, config}]
+    else
+      []
+    end
   end
 end

@@ -15,30 +15,28 @@ defmodule PhxBackendBoilerplate.Observability.CloudWatchLogHandler do
   @default_max_batch 50
   @default_error_throttle_ms 30_000
 
+  def start_link(config) when is_list(config), do: start_link(Map.new(config))
+
+  def start_link(config) when is_map(config) do
+    GenServer.start_link(__MODULE__, normalize_config(config), name: __MODULE__)
+  end
+
   @impl true
   def adding_handler(%{id: _id, config: config} = handler_config) do
     config = normalize_config(config)
 
-    case GenServer.start_link(__MODULE__, config, name: __MODULE__) do
-      {:ok, _pid} ->
-        {:ok, handler_config}
-
-      {:error, {:already_started, _pid}} ->
+    case GenServer.whereis(__MODULE__) do
+      pid when is_pid(pid) ->
         :ok = GenServer.call(__MODULE__, {:update_config, config})
         {:ok, handler_config}
 
-      {:error, reason} ->
-        {:error, reason}
+      nil ->
+        {:error, :not_started}
     end
   end
 
   @impl true
-  def removing_handler(_handler_config) do
-    case GenServer.whereis(__MODULE__) do
-      nil -> :ok
-      pid -> GenServer.stop(pid, :normal)
-    end
-  end
+  def removing_handler(_handler_config), do: :ok
 
   @impl true
   def changing_config(_set_or_update, _old, new) do

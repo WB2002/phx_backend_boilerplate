@@ -3,14 +3,14 @@ defmodule PhxBackendBoilerplateWeb.Plugs.Authenticate do
   Requires a valid access JWT in the `Authorization: Bearer` header.
 
   On success assigns `current_user_id` and `current_session_id`, and updates
-  `RequestContext`. Rejects tokens whose session id appears in the Redis
-  `expired_sessions` deny list.
+  `RequestContext`. Rejects tokens when `Accounts.authenticate_access_token/1`
+  reports the session revoked (Redis deny list, with Postgres fallback when the
+  cache is unavailable).
   """
 
   import Plug.Conn
 
-  alias PhxBackendBoilerplate.Accounts.ExpiredSessions
-  alias PhxBackendBoilerplate.Accounts.Tokens
+  alias PhxBackendBoilerplate.Accounts
   alias PhxBackendBoilerplate.RequestContext
 
   @behaviour Plug
@@ -21,12 +21,12 @@ defmodule PhxBackendBoilerplateWeb.Plugs.Authenticate do
   @impl true
   def call(conn, _opts) do
     with {:ok, token} <- bearer_token(conn),
-         {:ok, claims} <- Tokens.verify_access(token),
-         false <- ExpiredSessions.revoked?(claims["jti"]) do
+         {:ok, %{user_id: user_id, session_id: session_id}} <-
+           Accounts.authenticate_access_token(token) do
       conn
-      |> assign(:current_user_id, claims["sub"])
-      |> assign(:current_session_id, claims["jti"])
-      |> tap(fn _ -> RequestContext.put_user_id(claims["sub"]) end)
+      |> assign(:current_user_id, user_id)
+      |> assign(:current_session_id, session_id)
+      |> tap(fn _ -> RequestContext.put_user_id(user_id) end)
     else
       _ ->
         conn

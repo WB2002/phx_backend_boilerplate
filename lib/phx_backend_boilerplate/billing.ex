@@ -74,17 +74,108 @@ defmodule PhxBackendBoilerplate.Billing do
     }
   end
 
+  @subscription_replace_fields [
+    :plan,
+    :stripe_price_id,
+    :status,
+    :current_period_end,
+    :updated_at
+  ]
+
   @doc """
   Records a Stripe webhook event idempotently and applies side effects.
+
+  Stripe HTTP calls happen before the database transaction. Entitlement writes
+  and the event row commit atomically via `Ecto.Multi`. Recoverable failures
+  return `{:error, reason}` so Oban can retry without leaving a processed event
+  without entitlements.
 
   Returns `:ok`, `{:ok, :duplicate}`, or `{:error, reason}`.
   """
   @spec handle_event(map()) :: :ok | {:ok, :duplicate} | {:error, term()}
   def handle_event(%{"id" => event_id, "type" => type} = event)
       when is_binary(event_id) and is_binary(type) do
+    case prepare_event(event) do
+      {:ok, multi} -> persist_event(multi)
+      {:skip, ^event_id, ^type} -> persist_event_only(event_id, type)
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  def handle_event(_), do: {:error, :invalid_event}
+
+  defp prepare_event(%{
+         "id" => event_id,
+         "type" => "checkout.session.completed",
+         "data" => %{"object" => session}
+       }) do
+    case session["mode"] do
+      "payment" ->
+        case purchase_attrs_from_session(session) do
+          {:ok, attrs} ->
+            {:ok, event_multi(event_id, "checkout.session.completed") |> purchase_multi(attrs)}
+
+          :skip ->
+            {:skip, event_id, "checkout.session.completed"}
+        end
+
+      "subscription" ->
+        case session["subscription"] do
+          subscription_id when is_binary(subscription_id) ->
+            with {:ok, subscription} <- Stripe.retrieve_subscription(subscription_id),
+                 {:ok, attrs} <- subscription_attrs_from_stripe(subscription, session) do
+              {:ok,
+               event_multi(event_id, "checkout.session.completed") |> subscription_multi(attrs)}
+            else
+              {:error, reason} -> {:error, reason}
+              :skip -> {:skip, event_id, "checkout.session.completed"}
+            end
+
+          _ ->
+            {:skip, event_id, "checkout.session.completed"}
+        end
+
+      _ ->
+        {:skip, event_id, "checkout.session.completed"}
+    end
+  end
+
+  defp prepare_event(%{"id" => event_id, "type" => type, "data" => %{"object" => subscription}})
+       when type in ["customer.subscription.updated", "customer.subscription.deleted"] do
+    case subscription_attrs_from_stripe(subscription, nil) do
+      {:ok, attrs} ->
+        {:ok, event_multi(event_id, type) |> subscription_multi(attrs)}
+
+      :skip ->
+        {:skip, event_id, type}
+    end
+  end
+
+  defp prepare_event(%{"id" => event_id, "type" => type}), do: {:skip, event_id, type}
+
+  defp persist_event(multi) do
+    case Repo.transaction(multi) do
+      {:ok, _results} ->
+        :ok
+
+      {:error, :stripe_event, %Ecto.Changeset{errors: errors}, _changes} ->
+        if duplicate_event?(errors) do
+          {:ok, :duplicate}
+        else
+          {:error, :invalid_event}
+        end
+
+      {:error, _failed_op, %Ecto.Changeset{} = changeset, _changes} ->
+        {:error, changeset}
+
+      {:error, _failed_op, reason, _changes} ->
+        {:error, reason}
+    end
+  end
+
+  defp persist_event_only(event_id, type) do
     case insert_stripe_event(event_id, type) do
       {:ok, _} ->
-        apply_event(event)
         :ok
 
       {:error, %Ecto.Changeset{errors: errors}} ->
@@ -96,7 +187,36 @@ defmodule PhxBackendBoilerplate.Billing do
     end
   end
 
-  def handle_event(_), do: {:error, :invalid_event}
+  defp event_multi(event_id, type) do
+    Ecto.Multi.new()
+    |> Ecto.Multi.insert(
+      :stripe_event,
+      StripeEvent.changeset(%StripeEvent{}, %{
+        stripe_event_id: event_id,
+        event_type: type
+      })
+    )
+  end
+
+  defp purchase_multi(multi, attrs) do
+    Ecto.Multi.insert(
+      multi,
+      :purchase,
+      Purchase.changeset(%Purchase{}, attrs),
+      on_conflict: :nothing,
+      conflict_target: :stripe_checkout_session_id
+    )
+  end
+
+  defp subscription_multi(multi, attrs) do
+    Ecto.Multi.insert(
+      multi,
+      :subscription,
+      Subscription.changeset(%Subscription{}, attrs),
+      on_conflict: {:replace, @subscription_replace_fields},
+      conflict_target: :stripe_subscription_id
+    )
+  end
 
   defp insert_stripe_event(event_id, type) do
     %StripeEvent{}
@@ -111,61 +231,25 @@ defmodule PhxBackendBoilerplate.Billing do
     end)
   end
 
-  defp apply_event(%{"type" => "checkout.session.completed", "data" => %{"object" => session}}) do
-    case session["mode"] do
-      "payment" -> insert_purchase_from_session(session)
-      "subscription" -> upsert_subscription_from_session(session)
-      _ -> :ok
-    end
-  end
-
-  defp apply_event(%{"type" => type, "data" => %{"object" => subscription}})
-       when type in ["customer.subscription.updated", "customer.subscription.deleted"] do
-    upsert_subscription_from_stripe(subscription)
-  end
-
-  defp apply_event(_), do: :ok
-
-  defp insert_purchase_from_session(session) do
+  defp purchase_attrs_from_session(session) do
     user_id = session_user_id(session)
     session_id = session["id"]
 
     if user_id && session_id do
-      attrs = %{
-        user_id: user_id,
-        plan: session["metadata"]["plan"] || "lifetime",
-        stripe_checkout_session_id: session_id,
-        stripe_payment_intent_id: session["payment_intent"],
-        status: "completed"
-      }
-
-      %Purchase{}
-      |> Purchase.changeset(attrs)
-      |> Repo.insert(on_conflict: :nothing, conflict_target: :stripe_checkout_session_id)
-      |> case do
-        {:ok, _} -> :ok
-        {:error, _} -> :ok
-      end
+      {:ok,
+       %{
+         user_id: user_id,
+         plan: get_in(session, ["metadata", "plan"]) || "lifetime",
+         stripe_checkout_session_id: session_id,
+         stripe_payment_intent_id: session["payment_intent"],
+         status: "completed"
+       }}
     else
-      :ok
+      :skip
     end
   end
 
-  defp upsert_subscription_from_session(session) do
-    case session["subscription"] do
-      subscription_id when is_binary(subscription_id) ->
-        with {:ok, subscription} <- Stripe.retrieve_subscription(subscription_id) do
-          upsert_subscription_from_stripe(subscription, session)
-        else
-          _ -> :ok
-        end
-
-      _ ->
-        :ok
-    end
-  end
-
-  defp upsert_subscription_from_stripe(subscription, checkout_session \\ nil) do
+  defp subscription_attrs_from_stripe(subscription, checkout_session) do
     user_id =
       case checkout_session do
         %{"metadata" => %{"user_id" => id}} when is_binary(id) -> id
@@ -181,32 +265,17 @@ defmodule PhxBackendBoilerplate.Billing do
           _ -> "pro"
         end
 
-      attrs = %{
-        user_id: user_id,
-        plan: plan,
-        stripe_subscription_id: subscription_id,
-        stripe_price_id: subscription_price_id(subscription),
-        status: subscription["status"],
-        current_period_end: unix_to_datetime(subscription["current_period_end"])
-      }
-
-      case Repo.get_by(Subscription, stripe_subscription_id: subscription_id) do
-        nil ->
-          %Subscription{}
-          |> Subscription.changeset(attrs)
-          |> Repo.insert()
-
-        existing ->
-          existing
-          |> Subscription.changeset(attrs)
-          |> Repo.update()
-      end
-      |> case do
-        {:ok, _} -> :ok
-        {:error, _} -> :ok
-      end
+      {:ok,
+       %{
+         user_id: user_id,
+         plan: plan,
+         stripe_subscription_id: subscription_id,
+         stripe_price_id: subscription_price_id(subscription),
+         status: subscription["status"],
+         current_period_end: unix_to_datetime(subscription["current_period_end"])
+       }}
     else
-      :ok
+      :skip
     end
   end
 
@@ -214,18 +283,51 @@ defmodule PhxBackendBoilerplate.Billing do
     {:ok, id}
   end
 
-  defp ensure_stripe_customer(%User{} = user) do
-    with {:ok, customer} <- Stripe.create_customer(user.email),
-         {:ok, updated} <- persist_stripe_customer_id(user, customer["id"]) do
-      {:ok, updated.stripe_customer_id}
+  defp ensure_stripe_customer(%User{id: user_id} = user) do
+    with nil <- reload_stripe_customer_id(user_id),
+         {:ok, customer} <-
+           Stripe.create_customer(user.email, idempotency_key: customer_idempotency_key(user_id)),
+         {:ok, customer_id} <- persist_stripe_customer_id(user_id, customer["id"]) do
+      {:ok, customer_id}
+    else
+      customer_id when is_binary(customer_id) -> {:ok, customer_id}
+      other -> other
     end
   end
 
-  defp persist_stripe_customer_id(%User{} = user, customer_id) do
-    user
-    |> Ecto.Changeset.change(stripe_customer_id: customer_id)
-    |> Repo.update()
+  defp reload_stripe_customer_id(user_id) do
+    User
+    |> where([u], u.id == ^user_id)
+    |> select([u], u.stripe_customer_id)
+    |> Repo.one()
+    |> case do
+      id when is_binary(id) and id != "" -> id
+      _ -> nil
+    end
   end
+
+  defp persist_stripe_customer_id(user_id, customer_id) do
+    Repo.transaction(fn ->
+      user =
+        User
+        |> where([u], u.id == ^user_id)
+        |> lock("FOR UPDATE")
+        |> Repo.one!()
+
+      case user.stripe_customer_id do
+        existing when is_binary(existing) and existing != "" ->
+          existing
+
+        _ ->
+          user
+          |> Ecto.Changeset.change(stripe_customer_id: customer_id)
+          |> Repo.update!()
+          |> Map.fetch!(:stripe_customer_id)
+      end
+    end)
+  end
+
+  defp customer_idempotency_key(user_id), do: "customer-#{user_id}"
 
   defp checkout_session_params(%User{} = user, plan, customer_id) do
     %{

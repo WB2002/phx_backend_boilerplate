@@ -30,6 +30,12 @@ defmodule PhxBackendBoilerplate.Integrations.Stripe.Api do
     secret_key = Keyword.fetch!(opts, :secret_key)
     api_base = Keyword.fetch!(opts, :api_base)
     req_options = Keyword.get(opts, :req_options, [])
+    idempotency_key = Keyword.get(opts, :idempotency_key)
+
+    headers =
+      secret_key
+      |> stripe_headers()
+      |> maybe_put_idempotency(idempotency_key)
 
     call(fn ->
       Integrations.through_req(fn ->
@@ -37,7 +43,7 @@ defmodule PhxBackendBoilerplate.Integrations.Stripe.Api do
           "#{api_base}/v1/customers",
           Keyword.merge(req_options,
             form: [email: email],
-            headers: stripe_headers(secret_key)
+            headers: headers
           )
         )
       end)
@@ -82,6 +88,25 @@ defmodule PhxBackendBoilerplate.Integrations.Stripe.Api do
       Integrations.through_req(fn ->
         HTTP.get(
           "#{api_base}/v1/subscriptions/#{subscription_id}",
+          Keyword.merge(req_options,
+            headers: stripe_headers(secret_key)
+          )
+        )
+      end)
+      |> interpret_json()
+    end)
+  end
+
+  @doc false
+  def retrieve_event(event_id, opts) when is_binary(event_id) and is_list(opts) do
+    secret_key = Keyword.fetch!(opts, :secret_key)
+    api_base = Keyword.fetch!(opts, :api_base)
+    req_options = Keyword.get(opts, :req_options, [])
+
+    call(fn ->
+      Integrations.through_req(fn ->
+        HTTP.get(
+          "#{api_base}/v1/events/#{event_id}",
           Keyword.merge(req_options,
             headers: stripe_headers(secret_key)
           )

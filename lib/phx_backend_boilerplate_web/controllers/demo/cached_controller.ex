@@ -6,6 +6,7 @@ defmodule PhxBackendBoilerplateWeb.Demo.CachedController do
 
     * `key` — cache key (default `"demo"`)
     * `work_ms` — simulated loader work, capped at 2000ms
+    * `error` — when `"1"`, loader returns an error (demo only)
   """
 
   use PhxBackendBoilerplateWeb, :controller
@@ -20,18 +21,33 @@ defmodule PhxBackendBoilerplateWeb.Demo.CachedController do
   def show(conn, params) do
     key = params |> Map.get("key", "demo") |> to_string()
     work_ms = parse_work_ms(params)
+    simulate_error? = Map.get(params, "error") in ["1", 1]
 
     case SWR.fetch(
            key,
            fn ->
-             if work_ms > 0, do: Process.sleep(work_ms)
+             cond do
+               simulate_error? ->
+                 {:error, {:l2, :econnrefused}}
 
-             {:ok,
-              %{
-                "key" => key,
-                "computed_at" => System.system_time(:millisecond),
-                "work_ms" => work_ms
-              }}
+               work_ms > 0 ->
+                 Process.sleep(work_ms)
+
+                 {:ok,
+                  %{
+                    "key" => key,
+                    "computed_at" => System.system_time(:millisecond),
+                    "work_ms" => work_ms
+                  }}
+
+               true ->
+                 {:ok,
+                  %{
+                    "key" => key,
+                    "computed_at" => System.system_time(:millisecond),
+                    "work_ms" => work_ms
+                  }}
+             end
            end,
            soft_ttl: @demo_soft_ttl,
            l1_hard_ttl: @demo_l1_hard_ttl,
@@ -45,10 +61,10 @@ defmodule PhxBackendBoilerplateWeb.Demo.CachedController do
         |> put_status(:gateway_timeout)
         |> json(%{errors: %{detail: "Gateway Timeout"}})
 
-      {:error, reason} ->
+      {:error, _reason} ->
         conn
         |> put_status(:internal_server_error)
-        |> json(%{errors: %{detail: inspect(reason)}})
+        |> json(%{errors: %{detail: "Internal Server Error"}})
     end
   end
 

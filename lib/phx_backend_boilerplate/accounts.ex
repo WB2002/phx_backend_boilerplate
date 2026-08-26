@@ -74,13 +74,32 @@ defmodule PhxBackendBoilerplate.Accounts do
   end
 
   @doc """
-  Deletes the session and adds its id to the Redis expired set.
+  Deletes the session row, then best-effort writes the id to the Redis deny list.
+
+  Always returns `:ok` even when the cache write fails; Postgres delete is the
+  durable revocation step.
   """
   @spec logout(String.t()) :: :ok
   def logout(session_id) when is_binary(session_id) do
     Repo.delete_all(from s in Session, where: s.id == ^session_id)
     ExpiredSessions.revoke(session_id)
     :ok
+  end
+
+  @doc """
+  Verifies an access JWT and returns user/session ids when the session is not revoked.
+
+  Used by HTTP plugs and GraphQL sockets so auth logic stays in one place.
+  """
+  @spec authenticate_access_token(String.t()) ::
+          {:ok, %{user_id: String.t(), session_id: String.t()}} | {:error, :unauthorized}
+  def authenticate_access_token(token) when is_binary(token) do
+    with {:ok, claims} <- Tokens.verify_access(token),
+         false <- ExpiredSessions.revoked?(claims["jti"]) do
+      {:ok, %{user_id: claims["sub"], session_id: claims["jti"]}}
+    else
+      _ -> {:error, :unauthorized}
+    end
   end
 
   @doc """
@@ -105,7 +124,13 @@ defmodule PhxBackendBoilerplate.Accounts do
   end
 
   @doc """
-  Fetches a user by id.
+  Fetches a user by id, or `nil` when no row exists.
+  """
+  @spec get_user(String.t()) :: User.t() | nil
+  def get_user(id), do: Repo.get(User, id)
+
+  @doc """
+  Fetches a user by id, raising when no row exists.
   """
   @spec get_user!(String.t()) :: User.t()
   def get_user!(id), do: Repo.get!(User, id)

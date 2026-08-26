@@ -9,6 +9,8 @@ defmodule PhxBackendBoilerplateWeb.Webhooks.StripeControllerTest do
   @payload ~s({"id":"evt_test_webhook","type":"checkout.session.completed","data":{"object":{"id":"cs_test"}}})
 
   setup do
+    :ok = PhxBackendBoilerplate.Test.RateLimitHelpers.clear_id("stripe_webhook")
+
     previous = Application.get_env(:phx_backend_boilerplate, Stripe, [])
 
     Application.put_env(:phx_backend_boilerplate, Stripe,
@@ -55,7 +57,14 @@ defmodule PhxBackendBoilerplateWeb.Webhooks.StripeControllerTest do
       |> post(~p"/api/webhooks/stripe", @payload)
 
     assert response(conn, 200) == ""
-    assert_enqueued(worker: StripeWebhookJob, args: %{"stripe_event_id" => "evt_test_webhook"})
+
+    assert_enqueued(
+      worker: StripeWebhookJob,
+      args: %{"stripe_event_id" => "evt_test_webhook"}
+    )
+
+    [job | _] = all_enqueued(worker: StripeWebhookJob)
+    refute Map.has_key?(job.args, "event")
   end
 
   defp sign(payload, secret) do

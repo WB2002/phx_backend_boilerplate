@@ -11,8 +11,16 @@ config :phx_backend_boilerplate,
   ecto_repos: [PhxBackendBoilerplate.Repo],
   generators: [timestamp_type: :utc_datetime]
 
-# Plug.Parsers body limit (must cover max_files_per_request * max_file_bytes).
-config :phx_backend_boilerplate, :parsers, length: 500_000_000
+# Plug.Parsers body limits: default JSON/urlencoded vs multipart uploads only.
+config :phx_backend_boilerplate, :parsers,
+  length: 8_000_000,
+  upload_length: 500_000_000
+
+# GraphQL document budgets (HTTP query string + Absinthe lexer/complexity).
+config :phx_backend_boilerplate, :graphql,
+  max_query_bytes: 16_384,
+  token_limit: 2000,
+  max_complexity: 100
 
 # Configure the endpoint
 config :phx_backend_boilerplate, PhxBackendBoilerplateWeb.Endpoint,
@@ -120,7 +128,7 @@ config :phx_backend_boilerplate, PhxBackendBoilerplate.LoadShed,
   ]
 
 # File uploads: validation, ClamAV, storage, resumable Range downloads.
-# Raise max_file_bytes (and Plug.Parsers :length) for multi-GB uploads.
+# Raise max_file_bytes (and :parsers :upload_length) for multi-GB uploads.
 config :phx_backend_boilerplate, PhxBackendBoilerplate.Files,
   max_file_bytes: 100_000_000,
   max_files_per_request: 5,

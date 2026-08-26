@@ -1,8 +1,12 @@
 defmodule PhxBackendBoilerplateWeb.GraphqlSocket do
   @moduledoc """
-  Public Absinthe WebSocket for GraphQL subscriptions.
+  Authenticated Absinthe WebSocket for GraphQL subscriptions.
 
-  Separate from `UserSocket`, which requires a signed demo login token.
+  Clients must pass an access JWT as the `token` connect param (same token as
+  `Authorization: Bearer` on HTTP). GraphiQL (dev-only) accepts the token in
+  connection params for subscription testing.
+
+  Separate from `UserSocket`, which uses a signed demo login Phoenix.Token.
   """
 
   use Phoenix.Socket
@@ -10,9 +14,36 @@ defmodule PhxBackendBoilerplateWeb.GraphqlSocket do
   use Absinthe.Phoenix.Socket,
     schema: PhxBackendBoilerplateWeb.Graphql.Schema
 
-  @impl true
-  def connect(_params, socket, _connect_info), do: {:ok, socket}
+  alias PhxBackendBoilerplate.Accounts
+  alias PhxBackendBoilerplateWeb.Graphql.Config
 
   @impl true
-  def id(_socket), do: nil
+  def connect(%{"token" => token}, socket, _connect_info) when is_binary(token) do
+    case Accounts.authenticate_access_token(token) do
+      {:ok, %{user_id: user_id, session_id: session_id}} ->
+        socket =
+          socket
+          |> assign(:current_user_id, user_id)
+          |> assign(:current_session_id, session_id)
+          |> Absinthe.Phoenix.Socket.put_options(
+            Keyword.merge(
+              Config.absinthe_options(),
+              context: %{
+                current_user_id: user_id,
+                current_session_id: session_id
+              }
+            )
+          )
+
+        {:ok, socket}
+
+      {:error, :unauthorized} ->
+        :error
+    end
+  end
+
+  def connect(_params, _socket, _connect_info), do: :error
+
+  @impl true
+  def id(%{assigns: %{current_user_id: user_id}}), do: "graphql_socket:#{user_id}"
 end

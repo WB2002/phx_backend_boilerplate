@@ -1,20 +1,15 @@
 defmodule PhxBackendBoilerplateWeb.Graphql.MutationTest do
   use PhxBackendBoilerplateWeb.ConnCase, async: false
 
-  setup %{conn: conn} do
-    conn =
-      conn
-      |> Map.put(:remote_ip, unique_ip())
-      |> put_req_header("content-type", "application/json")
+  import PhxBackendBoilerplateWeb.GraphqlCase
 
+  setup do
+    {conn, _auth} = authenticated_graphql_conn()
     {:ok, conn: conn}
   end
 
   test "echo returns id and message", %{conn: conn} do
-    conn =
-      post(conn, ~p"/api/graphql", %{
-        "query" => ~s|mutation { echo(message: "hi") { id message } }|
-      })
+    conn = graphql_post(conn, ~s|mutation { echo(message: "hi") { id message } }|)
 
     assert %{
              "data" => %{
@@ -30,18 +25,20 @@ defmodule PhxBackendBoilerplateWeb.Graphql.MutationTest do
   end
 
   test "echo without message returns validation errors", %{conn: conn} do
-    conn =
-      post(conn, ~p"/api/graphql", %{
-        "query" => "mutation { echo { id message } }"
-      })
+    conn = graphql_post(conn, "mutation { echo { id message } }")
 
     assert %{"errors" => errors} = json_response(conn, 200)
     assert is_list(errors)
     assert errors != []
   end
 
-  defp unique_ip do
-    n = :erlang.unique_integer([:positive])
-    {10, 3, rem(div(n, 256), 256), rem(n, 256)}
+  test "returns 401 without authorization", %{conn: _conn} do
+    conn =
+      build_conn()
+      |> Map.put(:remote_ip, unique_ip())
+      |> put_req_header("content-type", "application/json")
+      |> graphql_post(~s|mutation { echo(message: "hi") { id message } }|)
+
+    assert json_response(conn, 401) == %{"errors" => %{"detail" => "Unauthorized"}}
   end
 end
