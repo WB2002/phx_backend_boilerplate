@@ -17,12 +17,16 @@ defmodule PhxBackendBoilerplate.Jobs do
   """
 
   import Ecto.Changeset
+  import Ecto.Query
 
   alias PhxBackendBoilerplate.RequestContext
+  alias PhxBackendBoilerplate.Repo
   alias PhxBackendBoilerplate.Workers.DemoJob
   alias PhxBackendBoilerplate.Workers.StripeWebhookJob
 
   @max_work_ms 2_000
+  @max_demo_queue_depth 100
+  @demo_active_states ~w(available scheduled executing retryable)
 
   @doc """
   Enqueues a `StripeWebhookJob` with only the Stripe event id.
@@ -55,8 +59,13 @@ defmodule PhxBackendBoilerplate.Jobs do
 
   Accepts a map with `"message"` (required), optional `"work_ms"`, and optional
   Slack notify flags `"notify_slack"` / `"slack_channel"`.
+
+  Returns `{:error, :queue_full}` when too many DemoJobs are already active,
+  or `{:error, :unique}` when Oban unique rejects a duplicate message within
+  the uniqueness window.
   """
-  @spec enqueue_demo(map()) :: {:ok, Oban.Job.t()} | {:error, Ecto.Changeset.t()}
+  @spec enqueue_demo(map()) ::
+          {:ok, Oban.Job.t()} | {:error, Ecto.Changeset.t() | :queue_full | :unique}
   def enqueue_demo(attrs) when is_map(attrs) do
     attrs
     |> atomize_keys()
@@ -72,11 +81,38 @@ defmodule PhxBackendBoilerplate.Jobs do
           |> maybe_put_slack(changes)
           |> put_request_context()
 
-        args
-        |> DemoJob.new()
-        |> Oban.insert()
+        with :ok <- ensure_demo_queue_capacity() do
+          insert_demo_job(args)
+        end
 
       changeset ->
+        {:error, changeset}
+    end
+  end
+
+  defp ensure_demo_queue_capacity do
+    count =
+      Oban.Job
+      |> where([j], j.worker == ^Oban.Worker.to_string(DemoJob))
+      |> where([j], j.state in ^@demo_active_states)
+      |> Repo.aggregate(:count)
+
+    if count >= @max_demo_queue_depth do
+      {:error, :queue_full}
+    else
+      :ok
+    end
+  end
+
+  defp insert_demo_job(args) do
+    case args |> DemoJob.new() |> Oban.insert() do
+      {:ok, %Oban.Job{conflict?: true}} ->
+        {:error, :unique}
+
+      {:ok, job} ->
+        {:ok, job}
+
+      {:error, %Ecto.Changeset{} = changeset} ->
         {:error, changeset}
     end
   end

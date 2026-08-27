@@ -22,6 +22,27 @@ defmodule PhxBackendBoilerplate.JobsTest do
     assert_enqueued(worker: DemoJob, args: %{"message" => "hello", "work_ms" => 0})
   end
 
+  test "enqueue_demo rejects duplicate message within unique window" do
+    assert {:ok, _} = Jobs.enqueue_demo(%{"message" => "unique-msg-1"})
+    assert {:error, :unique} = Jobs.enqueue_demo(%{"message" => "unique-msg-1"})
+  end
+
+  test "enqueue_demo rejects when active demo queue is full" do
+    previous = Application.get_env(:phx_backend_boilerplate, Oban)
+
+    # Insert 100 available DemoJobs directly to fill the depth cap.
+    for i <- 1..100 do
+      assert {:ok, _} =
+               %{"message" => "fill-#{i}"}
+               |> DemoJob.new()
+               |> Oban.insert()
+    end
+
+    assert {:error, :queue_full} = Jobs.enqueue_demo(%{"message" => "one-more"})
+
+    _ = previous
+  end
+
   test "enqueue_stripe_webhook stores only stripe_event_id in args" do
     assert {:ok, %Oban.Job{args: args}} = Jobs.enqueue_stripe_webhook("evt_jobs_test")
 

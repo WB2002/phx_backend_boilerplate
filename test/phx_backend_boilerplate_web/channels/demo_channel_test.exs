@@ -31,6 +31,17 @@ defmodule PhxBackendBoilerplateWeb.DemoChannelTest do
              subscribe_and_join(socket, "demo:secret", %{})
   end
 
+  test "rejects joins beyond the per-socket channel cap", %{socket: socket} do
+    max = PhxBackendBoilerplateWeb.SocketLimits.max_channels_per_socket()
+
+    for _ <- 1..max do
+      assert :ok = PhxBackendBoilerplateWeb.SocketLimits.checkout_channel(socket)
+    end
+
+    assert {:error, %{reason: "too_many_channels"}} =
+             subscribe_and_join(socket, "demo:lobby", %{})
+  end
+
   test "replies to ping", %{socket: socket} do
     {:ok, _, socket} = subscribe_and_join(socket, "demo:lobby", %{})
 

@@ -16,27 +16,44 @@ defmodule PhxBackendBoilerplateWeb.DemoChannel do
   use PhxBackendBoilerplateWeb, :channel
 
   alias PhxBackendBoilerplate.PubSub
+  alias PhxBackendBoilerplateWeb.SocketLimits
 
   @max_ping_payload_bytes 4_096
 
   @impl true
   def join("demo:lobby", _payload, socket) do
-    :ok = PubSub.subscribe("demo:lobby")
-    {:ok, socket}
+    with :ok <- SocketLimits.checkout_channel(socket) do
+      :ok = PubSub.subscribe("demo:lobby")
+      {:ok, socket}
+    else
+      {:error, :too_many_channels} ->
+        {:error, %{reason: "too_many_channels"}}
+    end
   end
 
   def join("demo:user:" <> user_id, _payload, socket) do
-    if user_id == socket.assigns.current_user_id do
+    with true <- user_id == socket.assigns.current_user_id,
+         :ok <- SocketLimits.checkout_channel(socket) do
       topic = "demo:user:" <> user_id
       :ok = PubSub.subscribe(topic)
       {:ok, socket}
     else
-      {:error, %{reason: "unauthorized"}}
+      false ->
+        {:error, %{reason: "unauthorized"}}
+
+      {:error, :too_many_channels} ->
+        {:error, %{reason: "too_many_channels"}}
     end
   end
 
   def join("demo:" <> _rest, _payload, _socket) do
     {:error, %{reason: "unauthorized"}}
+  end
+
+  @impl true
+  def terminate(_reason, socket) do
+    SocketLimits.checkin_channel(socket)
+    :ok
   end
 
   @impl true

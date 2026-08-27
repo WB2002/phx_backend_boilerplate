@@ -17,6 +17,9 @@ defmodule PhxBackendBoilerplateWeb.Graphql.Resolvers.Demo do
   def hello(_parent, _args, _resolution), do: {:ok, "Hello, world!"}
 
   @doc false
+  def echoes(_parent, _args, _resolution), do: {:ok, []}
+
+  @doc false
   def echo(_parent, %{message: message}, %{context: %{current_user_id: user_id}})
       when is_binary(message) and is_binary(user_id) do
     echo_message = %{id: Ecto.UUID.generate(), message: message}

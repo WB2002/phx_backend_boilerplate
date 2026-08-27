@@ -51,6 +51,12 @@ defmodule PhxBackendBoilerplateWeb.Graphql.Config do
     |> Keyword.get(:max_depth, 10)
   end
 
+  @spec max_list_page_size() :: pos_integer()
+  def max_list_page_size do
+    graphql_config()
+    |> Keyword.get(:max_list_page_size, 50)
+  end
+
   defp graphql_config do
     Application.get_env(:phx_backend_boilerplate, :graphql, [])
   end

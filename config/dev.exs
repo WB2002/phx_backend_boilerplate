@@ -9,7 +9,10 @@ config :phx_backend_boilerplate, PhxBackendBoilerplate.Repo,
   database: "phx_backend_boilerplate_dev",
   stacktrace: true,
   show_sensitive_data_on_connection_error: true,
-  pool_size: 10
+  pool_size: 10,
+  parameters: [
+    options: "-c statement_timeout=15s"
+  ]
 
 # For development, we disable any cache and enable
 # debugging and code reloading.
@@ -20,7 +23,18 @@ config :phx_backend_boilerplate, PhxBackendBoilerplate.Repo,
 config :phx_backend_boilerplate, PhxBackendBoilerplateWeb.Endpoint,
   # Binding to loopback ipv4 address prevents access from other machines.
   # Change to `ip: {0, 0, 0, 0}` to allow access from other machines.
-  http: [ip: {127, 0, 0, 1}],
+  # Re-assert socket budgets so env overlays never drop them.
+  http: [
+    ip: {127, 0, 0, 1},
+    websocket_options: [
+      max_frame_size: 65_536,
+      max_fragmented_message_size: 262_144
+    ],
+    thousand_island_options: [
+      num_connections: 4_096,
+      read_timeout: 60_000
+    ]
+  ],
   check_origin: false,
   code_reloader: true,
   debug_errors: true,
@@ -56,6 +70,9 @@ config :phx_backend_boilerplate, PhxBackendBoilerplateWeb.Endpoint,
 
 # Enable dev routes for dashboard and mailbox
 config :phx_backend_boilerplate, dev_routes: true
+
+# Demo HTTP (/api/demo) and /socket
+config :phx_backend_boilerplate, :demo_routes, true
 
 # Do not include metadata nor timestamps in development logs
 config :logger, :default_formatter, format: "[$level] $message\n"

@@ -20,8 +20,19 @@ if System.get_env("PHX_SERVER") do
   config :phx_backend_boilerplate, PhxBackendBoilerplateWeb.Endpoint, server: true
 end
 
+# Re-assert socket budgets alongside port so shallow overlays cannot drop them.
 config :phx_backend_boilerplate, PhxBackendBoilerplateWeb.Endpoint,
-  http: [port: String.to_integer(System.get_env("PORT", "4000"))]
+  http: [
+    port: String.to_integer(System.get_env("PORT", "4000")),
+    websocket_options: [
+      max_frame_size: 65_536,
+      max_fragmented_message_size: 262_144
+    ],
+    thousand_island_options: [
+      num_connections: 4_096,
+      read_timeout: 60_000
+    ]
+  ]
 
 redis_url =
   case config_env() do
@@ -450,6 +461,9 @@ if config_env() == :prod do
     timeout: 15_000,
     queue_target: 50,
     queue_interval: 1_000,
+    parameters: [
+      options: "-c statement_timeout=15s"
+    ],
     # For machines with several cores, consider starting multiple pools of `pool_size`
     # pool_count: 4,
     socket_options: maybe_ipv6
@@ -477,7 +491,15 @@ if config_env() == :prod do
       # Set it to  {0, 0, 0, 0, 0, 0, 0, 1} for local network only access.
       # See the documentation on https://bandit.hexdocs.pm/Bandit.html#t:options/0
       # for details about using IPv6 vs IPv4 and loopback vs public addresses.
-      ip: {0, 0, 0, 0, 0, 0, 0, 0}
+      ip: {0, 0, 0, 0, 0, 0, 0, 0},
+      websocket_options: [
+        max_frame_size: 65_536,
+        max_fragmented_message_size: 262_144
+      ],
+      thousand_island_options: [
+        num_connections: 4_096,
+        read_timeout: 60_000
+      ]
     ],
     secret_key_base: secret_key_base
 

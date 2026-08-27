@@ -8,25 +8,24 @@ defmodule PhxBackendBoilerplateWeb.UserSocket do
 
   use Phoenix.Socket
 
+  alias PhxBackendBoilerplateWeb.SocketLimits
+
   channel "demo:*", PhxBackendBoilerplateWeb.DemoChannel
 
   @impl true
-  def connect(%{"token" => token}, socket, _connect_info) when is_binary(token) do
-    if byte_size(token) > PhxBackendBoilerplateWeb.SocketLimits.max_token_bytes() do
-      :error
+  def connect(%{"token" => token}, socket, connect_info) when is_binary(token) do
+    with :ok <- SocketLimits.rate_limit_connect(connect_info),
+         true <- byte_size(token) <= SocketLimits.max_token_bytes(),
+         {:ok, %{"sub" => user_id, "email" => email}} <-
+           PhxBackendBoilerplateWeb.SocketAuth.verify(token) do
+      socket =
+        socket
+        |> assign(:current_user_id, user_id)
+        |> assign(:email, email)
+
+      {:ok, socket}
     else
-      case PhxBackendBoilerplateWeb.SocketAuth.verify(token) do
-        {:ok, %{"sub" => user_id, "email" => email}} ->
-          socket =
-            socket
-            |> assign(:current_user_id, user_id)
-            |> assign(:email, email)
-
-          {:ok, socket}
-
-        {:error, _reason} ->
-          :error
-      end
+      _ -> :error
     end
   end
 

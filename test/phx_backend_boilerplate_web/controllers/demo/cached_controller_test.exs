@@ -7,11 +7,11 @@ defmodule PhxBackendBoilerplateWeb.Demo.CachedControllerTest do
   setup %{conn: conn} do
     ip = unique_ip()
     key = "demo-cached-#{:erlang.unique_integer([:positive])}"
-    storage_key = "demo:cached:#{key}"
+    storage_key = PhxBackendBoilerplateWeb.Demo.CachedController.storage_key(key)
     _ = L1.delete(storage_key)
     _ = L2.delete(storage_key)
     _ = L2.delete("swr:lock:#{storage_key}")
-    {:ok, conn: Map.put(conn, :remote_ip, ip), key: key}
+    {:ok, conn: Map.put(conn, :remote_ip, ip), key: key, storage_key: storage_key}
   end
 
   test "rejects oversized cache keys", %{conn: conn} do
@@ -25,6 +25,20 @@ defmodule PhxBackendBoilerplateWeb.Demo.CachedControllerTest do
     conn = get(conn, ~p"/api/demo/cached", %{"key" => "foo/bar", "work_ms" => "0"})
 
     assert json_response(conn, 400) == %{"errors" => %{"detail" => "Invalid cache key"}}
+  end
+
+  test "stores under a hashed key, not the raw user key", %{
+    conn: conn,
+    key: key,
+    storage_key: storage_key
+  } do
+    refute String.contains?(storage_key, key)
+    assert String.starts_with?(storage_key, "demo:cached:")
+
+    conn = get(conn, ~p"/api/demo/cached?key=#{key}&work_ms=0")
+    assert %{"data" => %{"key" => ^key}} = json_response(conn, 200)
+
+    assert {:ok, _} = L1.get(storage_key)
   end
 
   test "returns cached payload with freshness", %{conn: conn, key: key} do

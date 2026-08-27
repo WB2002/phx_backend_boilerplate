@@ -87,4 +87,34 @@ defmodule PhxBackendBoilerplateWeb.Graphql.QueryTest do
     assert %{"errors" => [%{"message" => message} | _]} = json_response(conn, 200)
     assert message =~ "depth"
   end
+
+  test "echoes list with small limit succeeds", %{conn: conn} do
+    conn = graphql_post(conn, "{ echoes(limit: 2) { id message } }")
+
+    assert json_response(conn, 200) == %{"data" => %{"echoes" => []}}
+  end
+
+  test "echoes list with large limit exceeds complexity", %{conn: conn} do
+    conn = graphql_post(conn, "{ echoes(limit: 101) { id message } }")
+
+    assert %{"errors" => [%{"message" => message} | _]} = json_response(conn, 200)
+    assert message =~ "complexity"
+  end
+
+  test "returns 413 when Content-Length exceeds GraphQL envelope cap", %{conn: conn} do
+    max_query = PhxBackendBoilerplateWeb.Graphql.Config.max_query_bytes()
+    # Envelope slack is 4096 in GraphqlBodyLimit
+    over = max_query + 4_096 + 1
+    body = Jason.encode!(%{"query" => "{ ping }"})
+
+    conn =
+      conn
+      |> recycle()
+      |> Map.put(:remote_ip, unique_ip())
+      |> put_req_header("content-type", "application/json")
+      |> put_req_header("content-length", Integer.to_string(over))
+      |> post(~p"/api/graphql", body)
+
+    assert json_response(conn, 413)["errors"]["detail"] =~ "GraphQL request exceeds maximum size"
+  end
 end

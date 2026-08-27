@@ -12,14 +12,31 @@ config :phx_backend_boilerplate, PhxBackendBoilerplate.Repo,
   port: 5433,
   database: "phx_backend_boilerplate_test#{System.get_env("MIX_TEST_PARTITION")}",
   pool: Ecto.Adapters.SQL.Sandbox,
-  pool_size: System.schedulers_online() * 2
+  pool_size: System.schedulers_online() * 2,
+  parameters: [
+    options: "-c statement_timeout=15s"
+  ]
 
 # We don't run a server during test. If one is required,
 # you can enable the server option below.
 config :phx_backend_boilerplate, PhxBackendBoilerplateWeb.Endpoint,
-  http: [ip: {127, 0, 0, 1}, port: 4002],
+  http: [
+    ip: {127, 0, 0, 1},
+    port: 4002,
+    websocket_options: [
+      max_frame_size: 65_536,
+      max_fragmented_message_size: 262_144
+    ],
+    thousand_island_options: [
+      num_connections: 4_096,
+      read_timeout: 60_000
+    ]
+  ],
   secret_key_base: "gwktdXphpy9PBEcxu/1x7ecrFWaM8kCl+F1s5+Us4TVO3WrB5sSY3CwDrj8llYdN",
   server: false
+
+# Demo HTTP (/api/demo) and /socket — not :dev_routes (no LiveDashboard/GraphiQL).
+config :phx_backend_boilerplate, :demo_routes, true
 
 # In test we don't send emails
 config :phx_backend_boilerplate, PhxBackendBoilerplate.Mailer, adapter: Swoosh.Adapters.Test

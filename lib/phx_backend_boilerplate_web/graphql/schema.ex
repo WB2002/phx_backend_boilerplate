@@ -11,6 +11,7 @@ defmodule PhxBackendBoilerplateWeb.Graphql.Schema do
 
   import_types(PhxBackendBoilerplateWeb.Graphql.Schema.DemoTypes)
 
+  alias PhxBackendBoilerplateWeb.Graphql.Complexity
   alias PhxBackendBoilerplateWeb.Graphql.Config
   alias PhxBackendBoilerplateWeb.Graphql.Middleware.RequireAuth
   alias PhxBackendBoilerplateWeb.Graphql.Resolvers.Demo
@@ -26,6 +27,13 @@ defmodule PhxBackendBoilerplateWeb.Graphql.Schema do
     field :hello, non_null(:string) do
       arg(:name, :string, default_value: "world")
       resolve(&Demo.hello/3)
+    end
+
+    @desc "Demo list field with limit-based complexity (returns empty list)"
+    field :echoes, non_null(list_of(non_null(:echo_message))) do
+      arg(:limit, :integer, default_value: 10)
+      complexity(&Complexity.list/2)
+      resolve(&Demo.echoes/3)
     end
   end
 

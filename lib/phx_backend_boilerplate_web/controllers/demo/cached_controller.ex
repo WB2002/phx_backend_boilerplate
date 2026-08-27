@@ -94,10 +94,16 @@ defmodule PhxBackendBoilerplateWeb.Demo.CachedController do
     user_key = params |> Map.get("key", "demo") |> to_string()
 
     if valid_user_key?(user_key) do
-      {:ok, user_key, @key_prefix <> user_key}
+      {:ok, user_key, storage_key(user_key)}
     else
       :error
     end
+  end
+
+  @doc false
+  def storage_key(user_key) when is_binary(user_key) do
+    hash = :sha256 |> :crypto.hash(user_key) |> Base.encode16(case: :lower)
+    @key_prefix <> hash
   end
 
   defp valid_user_key?(key)

@@ -177,4 +177,22 @@ defmodule PhxBackendBoilerplate.HTTPTest do
                max_body_bytes: 16
              )
   end
+
+  test "aborts streaming before buffering an oversized body" do
+    stub_name = :"http_stream_big_#{System.unique_integer([:positive])}"
+    # Large enough that a naive full buffer would allocate far more than the cap.
+    payload = String.duplicate("x", 100_000)
+
+    Req.Test.stub(stub_name, fn conn ->
+      Plug.Conn.send_resp(conn, 200, payload)
+    end)
+
+    assert {:error, :response_too_large} =
+             HTTP.get("/stream-big",
+               base_url: "https://example.test",
+               plug: {Req.Test, stub_name},
+               decode_body: false,
+               max_body_bytes: 1_024
+             )
+  end
 end

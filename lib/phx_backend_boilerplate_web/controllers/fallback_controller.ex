@@ -92,6 +92,18 @@ defmodule PhxBackendBoilerplateWeb.FallbackController do
     |> json(%{errors: %{detail: "Billing is disabled"}})
   end
 
+  def call(conn, {:error, :queue_full}) do
+    conn
+    |> put_status(:too_many_requests)
+    |> json(%{errors: %{detail: "Too Many Requests"}})
+  end
+
+  def call(conn, {:error, :unique}) do
+    conn
+    |> put_status(:conflict)
+    |> json(%{errors: %{detail: "Duplicate job"}})
+  end
+
   def call(conn, {:error, _reason}) do
     conn
     |> put_status(:unprocessable_entity)

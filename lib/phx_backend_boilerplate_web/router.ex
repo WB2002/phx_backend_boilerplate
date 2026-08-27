@@ -209,74 +209,76 @@ defmodule PhxBackendBoilerplateWeb.Router do
       get "/me", AuthController, :me
     end
 
-    scope "/demo" do
-      pipe_through [:api, :rate_limit_demo_login, :recaptcha]
+    if Application.compile_env(:phx_backend_boilerplate, :demo_routes, false) do
+      scope "/demo" do
+        pipe_through [:api, :rate_limit_demo_login, :recaptcha]
 
-      post "/login", Demo.SessionController, :create
-    end
+        post "/login", Demo.SessionController, :create
+      end
 
-    scope "/demo" do
-      pipe_through :api
-      pipe_through :rate_limit_demo_comments
+      scope "/demo" do
+        pipe_through :api
+        pipe_through :rate_limit_demo_comments
 
-      post "/comments", Demo.CommentController, :create
-    end
+        post "/comments", Demo.CommentController, :create
+      end
 
-    scope "/demo" do
-      pipe_through :api_public
-      pipe_through :rate_limit_demo_public
+      scope "/demo" do
+        pipe_through :api_public
+        pipe_through :rate_limit_demo_public
 
-      get "/public", Demo.PublicController, :show
-    end
+        get "/public", Demo.PublicController, :show
+      end
 
-    scope "/demo" do
-      pipe_through [:api, :rate_limit_demo_expensive, :load_shed_demo_expensive]
+      scope "/demo" do
+        pipe_through [:api, :rate_limit_demo_expensive, :load_shed_demo_expensive]
 
-      get "/expensive", Demo.ExpensiveController, :show
-    end
+        get "/expensive", Demo.ExpensiveController, :show
+      end
 
-    scope "/demo" do
-      pipe_through [:api, :rate_limit_demo_cached]
+      scope "/demo" do
+        pipe_through [:api, :rate_limit_demo_cached]
 
-      get "/cached", Demo.CachedController, :show
-    end
+        get "/cached", Demo.CachedController, :show
+      end
 
-    scope "/demo" do
-      pipe_through [:api_stream, :rate_limit_demo_stream]
+      scope "/demo" do
+        pipe_through [:api_stream, :rate_limit_demo_stream]
 
-      get "/stream/chunks", Demo.StreamController, :chunks
-      get "/stream/sse", Demo.StreamController, :sse
-    end
+        get "/stream/chunks", Demo.StreamController, :chunks
+        get "/stream/sse", Demo.StreamController, :sse
+      end
 
-    scope "/demo" do
-      pipe_through [:api_uploads, :rate_limit_demo_uploads, :load_shed_demo_uploads]
+      scope "/demo" do
+        pipe_through [:api_uploads, :rate_limit_demo_uploads, :load_shed_demo_uploads]
 
-      post "/files", Demo.FilesController, :create
-    end
+        post "/files", Demo.FilesController, :create
+      end
 
-    scope "/demo" do
-      pipe_through [:api, :rate_limit_demo_downloads]
+      scope "/demo" do
+        pipe_through [:api, :rate_limit_demo_downloads]
 
-      get "/files/:id", Demo.FilesController, :show
-      head "/files/:id", Demo.FilesController, :head
-    end
+        get "/files/:id", Demo.FilesController, :show
+        head "/files/:id", Demo.FilesController, :head
+      end
 
-    scope "/demo/flags" do
-      pipe_through [:api, :rate_limit_demo_flags]
+      scope "/demo/flags" do
+        pipe_through [:api, :rate_limit_demo_flags]
 
-      get "/preview", Demo.FlagsController, :preview
-    end
+        get "/preview", Demo.FlagsController, :preview
+      end
 
-    scope "/demo/flags" do
-      pipe_through [:api_public, :rate_limit_demo_flags]
+      scope "/demo/flags" do
+        pipe_through [:api_public, :rate_limit_demo_flags]
 
-      get "/beta", Demo.FlagsController, :beta
-    end
+        get "/beta", Demo.FlagsController, :beta
+      end
 
-    scope "/demo" do
-      pipe_through [:api, :rate_limit_demo_jobs]
+      scope "/demo" do
+        pipe_through [:api, :rate_limit_demo_jobs]
 
-      post "/jobs", Demo.JobsController, :create
+        post "/jobs", Demo.JobsController, :create
+      end
     end
 
     scope "/billing" do

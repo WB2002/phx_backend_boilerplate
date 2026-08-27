@@ -17,13 +17,15 @@ defmodule PhxBackendBoilerplateWeb.GraphqlSocket do
 
   alias PhxBackendBoilerplate.Accounts
   alias PhxBackendBoilerplateWeb.Graphql.Config
+  alias PhxBackendBoilerplateWeb.SocketLimits
 
   @impl true
-  def connect(%{"token" => token}, socket, _connect_info) when is_binary(token) do
-    if byte_size(token) > PhxBackendBoilerplateWeb.SocketLimits.max_token_bytes() do
-      :error
-    else
+  def connect(%{"token" => token}, socket, connect_info) when is_binary(token) do
+    with :ok <- SocketLimits.rate_limit_connect(connect_info),
+         true <- byte_size(token) <= SocketLimits.max_token_bytes() do
       authenticate_socket(token, socket)
+    else
+      _ -> :error
     end
   end
 

@@ -11,7 +11,15 @@ defmodule PhxBackendBoilerplate.Workers.DemoJob do
     * `"request_id"` / `"correlation_id"` (optional) — tracing from the enqueueing request
   """
 
-  use Oban.Worker, queue: :default, max_attempts: 3
+  use Oban.Worker,
+    queue: :default,
+    max_attempts: 3,
+    unique: [
+      period: 60,
+      fields: [:worker, :args],
+      keys: [:message],
+      states: [:available, :scheduled, :executing, :retryable]
+    ]
 
   require Logger
 

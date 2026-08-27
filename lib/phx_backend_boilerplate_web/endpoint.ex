@@ -19,12 +19,15 @@ defmodule PhxBackendBoilerplateWeb.Endpoint do
       longpoll: [connect_info: [session: @session_options]]
   end
 
-  socket "/socket", PhxBackendBoilerplateWeb.UserSocket,
-    websocket: true,
-    longpoll: false
+  # Demo UserSocket — off in production (`:demo_routes`).
+  if Application.compile_env(:phx_backend_boilerplate, :demo_routes, false) do
+    socket "/socket", PhxBackendBoilerplateWeb.UserSocket,
+      websocket: PhxBackendBoilerplateWeb.SocketLimits.websocket_transport_options(),
+      longpoll: false
+  end
 
   socket "/graphql", PhxBackendBoilerplateWeb.GraphqlSocket,
-    websocket: true,
+    websocket: PhxBackendBoilerplateWeb.SocketLimits.websocket_transport_options(),
     longpoll: false
 
   # Serve at "/" the static files from "priv/static" directory.
@@ -55,12 +58,14 @@ defmodule PhxBackendBoilerplateWeb.Endpoint do
   plug PhxBackendBoilerplateWeb.Plugs.SecurityHeaders
   plug Plug.Telemetry, event_prefix: [:phoenix, :endpoint]
 
+  plug PhxBackendBoilerplateWeb.Plugs.GraphqlBodyLimit
+
   plug PhxBackendBoilerplateWeb.Plugs.Parsers,
     parsers: [:urlencoded, :json],
     pass: ["*/*"],
     json_decoder: Phoenix.json_library(),
     body_reader: {PhxBackendBoilerplateWeb.Plugs.CacheBodyReader, :read_body, []},
-    length: Application.compile_env(:phx_backend_boilerplate, [:parsers, :length], 8_000_000)
+    length: Application.compile_env(:phx_backend_boilerplate, [:parsers, :length], 1_000_000)
 
   plug Plug.MethodOverride
   plug Plug.Head

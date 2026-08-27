@@ -9,6 +9,9 @@ defmodule PhxBackendBoilerplate.HTTP do
   When `PhxBackendBoilerplate.RequestContext` is set, also attaches
   `x-request-id` and `x-correlation-id` for downstream tracing.
 
+  Response bodies are streamed via Req `into:` and aborted once they exceed
+  `max_body_bytes` (default 2MB) so oversized payloads are not fully buffered.
+
   Resilience (retry, circuit breaker) belongs in per-dependency
   `ExternalService` clients under `PhxBackendBoilerplate.Integrations`.
   This module always disables Req's built-in retry so those policies are
@@ -21,6 +24,7 @@ defmodule PhxBackendBoilerplate.HTTP do
   @finch PhxBackendBoilerplate.Finch
   @default_receive_timeout 15_000
   @default_max_body_bytes 2_000_000
+  @too_large_private :phx_response_too_large
 
   @doc """
   Builds a `Req.Request` with shared defaults, app config, and `opts`.
@@ -39,7 +43,7 @@ defmodule PhxBackendBoilerplate.HTTP do
 
   @doc """
   Performs an HTTP request. Returns `{:ok, response}`, `{:error, exception}`,
-  or `{:error, :deadline_exceeded}`.
+  `{:error, :deadline_exceeded}`, or `{:error, :response_too_large}`.
   """
   def request(opts) when is_list(opts) do
     remaining_before = Deadline.remaining()
@@ -56,12 +60,17 @@ defmodule PhxBackendBoilerplate.HTTP do
         |> maybe_put_propagation_headers()
         |> maybe_cap_receive_timeout(remaining_before)
         |> Keyword.put(:retry, false)
+        |> put_body_collector(max_body_bytes)
 
-      merged
-      |> Req.new()
-      |> Req.request()
+      {request, result} =
+        merged
+        |> Req.new()
+        |> Req.Request.run_request()
+
+      result
+      |> wrap_run_result()
       |> classify_timeout(remaining_before, config_timeout)
-      |> enforce_max_body(max_body_bytes)
+      |> maybe_reject_oversized(request)
     end
   end
 
@@ -98,6 +107,41 @@ defmodule PhxBackendBoilerplate.HTTP do
     |> Keyword.merge(app_opts)
     |> Keyword.merge(opts)
   end
+
+  defp put_body_collector(opts, max_body_bytes)
+       when is_integer(max_body_bytes) and max_body_bytes > 0 do
+    Keyword.put(opts, :into, body_collector(max_body_bytes))
+  end
+
+  defp put_body_collector(opts, _max_body_bytes), do: opts
+
+  defp body_collector(max_body_bytes) do
+    fn {:data, chunk}, {req, resp} ->
+      current = resp.body || ""
+      size = byte_size(current) + byte_size(chunk)
+
+      if size > max_body_bytes do
+        req = Req.Request.put_private(req, @too_large_private, true)
+        {:halt, {req, resp}}
+      else
+        {:cont, {req, %{resp | body: current <> chunk}}}
+      end
+    end
+  end
+
+  defp wrap_run_result(%Req.Response{} = response), do: {:ok, response}
+  defp wrap_run_result(%_{__exception__: true} = exception), do: {:error, exception}
+  defp wrap_run_result(other), do: {:error, other}
+
+  defp maybe_reject_oversized({:ok, response}, request) do
+    if Req.Request.get_private(request, @too_large_private) do
+      {:error, :response_too_large}
+    else
+      {:ok, response}
+    end
+  end
+
+  defp maybe_reject_oversized(result, _request), do: result
 
   defp maybe_put_propagation_headers(opts) do
     propagation = RequestContext.propagation_headers() ++ Deadline.propagation_headers()
@@ -143,22 +187,4 @@ defmodule PhxBackendBoilerplate.HTTP do
   end
 
   defp classify_timeout(result, _remaining_before, _config_timeout), do: result
-
-  defp enforce_max_body({:ok, %Req.Response{} = response}, max_body_bytes)
-       when is_integer(max_body_bytes) and max_body_bytes > 0 do
-    if response_body_bytes(response) > max_body_bytes do
-      {:error, :response_too_large}
-    else
-      {:ok, response}
-    end
-  end
-
-  defp enforce_max_body(result, _max_body_bytes), do: result
-
-  defp response_body_bytes(%Req.Response{body: body}) when is_binary(body), do: byte_size(body)
-
-  defp response_body_bytes(%Req.Response{body: body}) when is_list(body),
-    do: IO.iodata_length(body)
-
-  defp response_body_bytes(%Req.Response{body: body}), do: :erlang.external_size(body)
 end

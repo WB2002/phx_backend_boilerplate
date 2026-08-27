@@ -13,6 +13,21 @@ defmodule PhxBackendBoilerplate.Application do
         {Finch,
          name: PhxBackendBoilerplate.Finch,
          pools: %{
+           "https://api.stripe.com" => [
+             size: 5,
+             count: 1,
+             pool_max_idle_time: :timer.minutes(5)
+           ],
+           "https://slack.com" => [
+             size: 5,
+             count: 1,
+             pool_max_idle_time: :timer.minutes(5)
+           ],
+           "https://www.google.com" => [
+             size: 5,
+             count: 1,
+             pool_max_idle_time: :timer.minutes(5)
+           ],
            default: [
              size: 10,
              count: 1,
