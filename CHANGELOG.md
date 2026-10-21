@@ -41,6 +41,7 @@ The format is based on Keep a Changelog.
 ### Deprecated
 ### Removed
 ### Fixed
+- Fixed CI test database connection failure by mapping port 5433 to the PostgreSQL service container in `.github/workflows/ci.yml` and supporting `DATABASE_URL` / `PGPORT` overrides in `config/test.exs`.
 ### Security
 - Added automated CI secret scanning via Gitleaks, SCA and IaC misconfiguration scanning via Trivy, and SAST via Semgrep.
 - Baselined known Hackney 1.25.0 timeout vulnerability (`CVE-2026-47071`) in `.trivyignore` with rationale and monitoring plan.
