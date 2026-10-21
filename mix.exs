@@ -71,6 +71,7 @@ defmodule PhxBackendBoilerplate.MixProject do
        depth: 1},
       {:swoosh, "~> 1.16"},
       {:req, "~> 0.5"},
+      {:castore, "~> 1.0"},
       {:external_service, "~> 2.8"},
       {:telemetry_metrics, "~> 1.0"},
       {:telemetry_poller, "~> 1.0"},
@@ -113,7 +114,7 @@ defmodule PhxBackendBoilerplate.MixProject do
       {:fun_with_flags_ui, "~> 1.1", only: :dev, runtime: false},
       {:oban, "~> 2.19"},
       # Available at compile time in all envs (router `import`); mount stays behind :dev_routes.
-      {:oban_web, "~> 2.11"},
+      {:oban_web, "~> 2.13"},
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false}
     ]
