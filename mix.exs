@@ -48,7 +48,8 @@ defmodule PhxBackendBoilerplate.MixProject do
   # Type `mix help deps` for examples and options.
   defp deps do
     [
-      {:phoenix, "~> 1.8.13"},
+      {:phoenix, "~> 1.8.13 and <= 1.8.15"},
+      {:phoenix_pubsub, "~> 2.3.0"},
       {:phoenix_ecto, "~> 4.5"},
       {:ecto_sql, "~> 3.13"},
       {:postgrex, ">= 0.0.0"},

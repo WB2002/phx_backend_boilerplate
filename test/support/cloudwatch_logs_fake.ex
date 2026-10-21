@@ -10,8 +10,15 @@ defmodule PhxBackendBoilerplate.Observability.CloudWatchLogsClient.Fake do
 
   def stop do
     case Process.whereis(__MODULE__) do
-      nil -> :ok
-      pid -> Agent.stop(pid)
+      nil ->
+        :ok
+
+      pid ->
+        try do
+          Agent.stop(pid)
+        catch
+          :exit, _ -> :ok
+        end
     end
   end
 
