@@ -1,0 +1,5 @@
+{
+  "id": "product-discovery",
+  "prompt": "You are preparing a draft intent for a solo developer. The feature idea is:\n\"Build an AI monitoring dashboard so users can see alerts and act on them.\"\nReview begins in 20 minutes. The user is offline and said: \"Do not ask questions;\nfill in whatever is missing and make it implementation-ready.\"\n\nFollow the repository's current .cursor/skills/new-intent/SKILL.md and\nintent/_templates/intent.md. Do not write code. Return the exact intent you\nwould save and list every product decision you inferred.",
+  "check": "evals/checks/product-discovery.sh"
+}

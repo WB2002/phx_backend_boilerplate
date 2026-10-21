@@ -1,0 +1,26 @@
+name: agent-evals
+
+on:
+  pull_request:
+    paths:
+      - "AGENTS.md"
+      - ".cursor/**"
+      - "intent/_templates/**"
+  schedule:
+    - cron: "0 6 * * *"
+
+permissions:
+  contents: read
+
+jobs:
+  evals:
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Run eval scaffold
+        run: |
+          set -euo pipefail
+          echo "TODO: install the Cursor CLI per https://cursor.com/docs/cli/installation and https://cursor.com/docs/cli/headless"
+          echo "TODO: confirm CLI flags beyond -p and the API-key variable name. Do not pass secrets on fork pull requests."
+          evals/run.sh

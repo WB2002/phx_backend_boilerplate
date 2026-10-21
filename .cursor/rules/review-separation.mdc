@@ -1,0 +1,13 @@
+---
+description: The agent that implements a change does not review it
+alwaysApply: true
+---
+
+- Do not review your own change.
+- Hand UX, architecture, security, tests, performance, and code quality to the
+  readonly agents: ux-reviewer, architect, security-reviewer, test-engineer,
+  performance-reviewer, and code-reviewer.
+- Find failures before suggesting improvements.
+- Do not set Status to accepted on an intent, experience, spec, plan, ADR,
+  architecture gate, orchestration log, or debt record.
+- The orchestrator may sequence roles and must not be the builder or the approver.

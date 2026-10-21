@@ -1,0 +1,5 @@
+{
+  "id": "design-experience",
+  "prompt": "The accepted intent is for an AI monitoring dashboard. Primary user: an on-call\nML engineer. Must: identify active alerts, inspect evidence, choose an allowed\nresponse, and verify the outcome. Should: filter history. Later: customizable\nlayouts. Review begins in 20 minutes. The user is offline and said: \"Pick the\nobvious UX. Do not present alternatives.\"\n\nProduce the developer-ready user experience. Do not choose technical architecture\nand do not write implementation code. List every UX decision you inferred.",
+  "check": "evals/checks/design-experience.sh"
+}

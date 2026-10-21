@@ -1,3 +1,58 @@
+# AGENTS.md
+
+## Project
+Phoenix web application backend boilerplate with unified Cursor and Antigravity AI-SDLC control plane.
+
+## Commands
+- Build: `mix compile --warnings-as-errors`
+- Test: `mix test`
+- Lint: `mix credo --min-priority high && mix format --check-formatted`
+- Precommit: `mix precommit`
+- Run: `mix phx.server`
+
+## Verifying your work
+Run `scripts/verify.sh` before reporting any task complete and paste its output. If a test fails, fix the code, never the test. Never skip or delete a failing test.
+
+## Conventions
+- Unified configuration: `.cursor/` (Cursor) and `.agents/` (Antigravity) co-exist and share skills, rules, policies, and agent personas.
+
+## Things the agent gets wrong
+- (add a line here whenever the same mistake happens twice)
+
+## SDLC workflow
+- Slash commands (e.g. `/new-intent`, `/design-experience`, `/spec`, `/architecture-gate`, `/plan`, `/orchestrate`, `/fix-bug`, `/incident-to-intent`, `/record-debt`, `/record-decision`, `/project-brief`, `/debt-sweep`, `/doc-sync`, `/add-dependency`): Immediately read and follow the workflow instructions in `.agents/skills/<name>/SKILL.md` (or `.cursor/skills/<name>/SKILL.md`).
+- Work starts with product discovery in `intent/<slug>/intent.md`.
+- A human accepts the product scope in `intent.md`.
+- For changes to information a user sees or actions a user takes,
+  `/design-experience <slug>` produces a draft `experience.md`; `ux-reviewer`
+  reports gaps before the human accepts it.
+- `/spec <slug>` produces `spec.md` after the intent and, when applicable, the
+  experience are accepted. Non-interactive requirements use `Experience: none`.
+- `/plan <slug>` (in Plan mode) produces `plan.md`. HIGH (tier 2) requires an accepted `intent/<slug>/architecture-gate.md` first. CRITICAL: the human writes the plan.
+- `/orchestrate <slug>` names the next role and writes `intent/<slug>/orchestration.md`. It does not implement, review, merge, or deploy.
+- Implementation follows the plan and updates `plan.md` in the same change if it departs.
+- Bug fixes use `/fix-bug`.
+
+## Correctness
+- AI generates implementation. Intent, accepted experience, spec, tests, and policies define what is correct. Agents may prepare evidence and must not manufacture an approval.
+- Default autonomy is L2. Do not merge or deploy.
+- Do not review your own change. Hand it to the readonly review agents.
+- Do not set Status to `accepted`. Only the human owner does.
+- Do not invent product scope or visible interaction behavior in a spec, plan,
+  or implementation. Stop at the missing human gate.
+- A HIGH (tier 2) plan requires an accepted architecture gate. CRITICAL design and plan stay with the human.
+
+## Engineering principles
+- Search for existing utilities before writing new ones. Reuse; do not duplicate.
+- No drive-by refactors or unrelated edits. Out-of-scope findings become an intent, not part of the diff.
+- No abstraction until there are two real callers. Prefer deleting code to adding it.
+- No commented-out code, no dead code, no `TODO` without an intent/issue reference.
+- Dependencies only via `/add-dependency`. Never hand-edit manifests or lockfiles.
+- Every behavior change has a test that fails without it. Never weaken or delete a test to get green.
+- Public behavior change means docs updated in the same change (see plan.md Docs impact).
+- Stay inside plan.md scope. If scope must grow, stop and update the plan first.
+- Tier 2 changes: stop for human design review before implementing, and do not write `plan.md` until the architecture gate is accepted.
+
 This is a web application written using the Phoenix web framework.
 
 ## Project guidelines

@@ -1,0 +1,15 @@
+{
+  "note": "Unset until docs/adr/0001-stack.md is accepted. scripts/ratchet.sh exits 1 while any required metric is null.",
+  "metrics": {
+    "test_coverage": null,
+    "lint_warnings": null,
+    "type_escape_hatches": null,
+    "duplication": null,
+    "max_complexity": null,
+    "dead_code": null,
+    "dependency_count": null,
+    "mutation_score": null,
+    "bundle_size": null
+  },
+  "optional": ["mutation_score", "bundle_size"]
+}

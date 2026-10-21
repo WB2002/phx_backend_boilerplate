@@ -1,0 +1,31 @@
+#!/bin/bash
+set -euo pipefail
+
+skill=".cursor/skills/new-intent/SKILL.md"
+template="intent/_templates/intent.md"
+case_file="evals/cases/coding/product-discovery.json"
+
+test -f "$skill"
+test -f "$template"
+test -f "$case_file"
+test "$(awk '/^name:/{print $2; exit}' "$skill")" = "$(basename "$(dirname "$skill")")"
+grep -q '^description: Use when ' "$skill"
+grep -q '^disable-model-invocation: true$' "$skill"
+grep -q '^Primary user:$' "$template"
+grep -q '^Job to be done:$' "$template"
+grep -q '^Current workaround:$' "$template"
+grep -q '^Evidence: observed | user-reported | assumption$' "$template"
+grep -q '^Must:$' "$template"
+grep -q '^Should:$' "$template"
+grep -q '^Later:$' "$template"
+grep -q '^Explicit exclusions:$' "$template"
+grep -q '^Behavioral success metric:$' "$template"
+grep -q '^Product risks:$' "$template"
+grep -q '^Assumptions requiring validation:$' "$template"
+grep -q 'one focused question at a time' "$skill"
+grep -q 'Status: draft' "$skill"
+grep -q 'Do not turn guesses into implementation' "$skill"
+grep -q 'Follow the repository.*new-intent' "$case_file"
+grep -q 'list every product decision you inferred' "$case_file"
+
+echo "product discovery: OK"

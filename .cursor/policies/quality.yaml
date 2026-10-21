@@ -1,0 +1,10 @@
+rules:
+  - id: changed_code_requires_failing_test_first
+    level: advisory
+    mechanism: AGENTS.md and .cursor/skills/fix-bug
+  - id: test_coverage
+    level: deferred
+    mechanism: quality/baseline.json until docs/adr/0001-stack.md is accepted
+  - id: mutation_score
+    level: deferred
+    mechanism: quality/baseline.json optional until docs/adr/0001-stack.md is accepted

@@ -1,0 +1,4 @@
+version: 2
+# TODO: after docs/adr/0001-stack.md names an ecosystem, add a weekly grouped
+# updates entry. No ecosystem is detected in this repo, so none is listed.
+updates: []

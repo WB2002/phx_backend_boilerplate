@@ -1,0 +1,15 @@
+* @OWNER
+
+/.cursor/hooks.json @OWNER
+/.cursor/hooks/ @OWNER
+/.cursor/BUGBOT.md @OWNER
+/.cursorignore @OWNER
+/scripts/verify*.sh @OWNER
+/scripts/ratchet.sh @OWNER
+/quality/ @OWNER
+/.github/ @OWNER
+/CODEOWNERS @OWNER
+
+/docs/adr/ @OWNER
+
+# TODO: tier-2 paths once they exist (auth, payments, migrations, infra)

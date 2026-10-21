@@ -1,0 +1,7 @@
+rules:
+  - id: domain_cannot_import_infrastructure
+    level: deferred
+    mechanism: unset until docs/adr/0001-stack.md is accepted
+  - id: controllers_cannot_access_database
+    level: deferred
+    mechanism: unset until docs/adr/0001-stack.md is accepted

@@ -1,0 +1,95 @@
+{
+  "protect-tests": {
+    "PreToolUse": [
+      {
+        "matcher": "write_to_file|replace_file_content|multi_replace_file_content",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .agents/hooks/protect-tests.sh 2>/dev/null || bash hooks/protect-tests.sh",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  },
+  "protect-guardrails": {
+    "PreToolUse": [
+      {
+        "matcher": "write_to_file|replace_file_content|multi_replace_file_content",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .agents/hooks/protect-guardrails.sh 2>/dev/null || bash hooks/protect-guardrails.sh",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  },
+  "manifest-guard": {
+    "PreToolUse": [
+      {
+        "matcher": "write_to_file|replace_file_content|multi_replace_file_content",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .agents/hooks/manifest-guard.sh 2>/dev/null || bash hooks/manifest-guard.sh",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  },
+  "production-gate": {
+    "PreToolUse": [
+      {
+        "matcher": "run_command",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .agents/hooks/production-gate.sh 2>/dev/null || bash hooks/production-gate.sh",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  },
+  "install-guard": {
+    "PreToolUse": [
+      {
+        "matcher": "run_command",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .agents/hooks/install-guard.sh 2>/dev/null || bash hooks/install-guard.sh",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  },
+  "block-secrets": {
+    "PreToolUse": [
+      {
+        "matcher": "view_file",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .agents/hooks/block-secrets.sh 2>/dev/null || bash hooks/block-secrets.sh",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  },
+  "verify-on-stop": {
+    "Stop": [
+      {
+        "type": "command",
+        "command": "bash .agents/hooks/verify-on-stop.sh 2>/dev/null || bash hooks/verify-on-stop.sh",
+        "timeout": 300
+      }
+    ]
+  }
+}

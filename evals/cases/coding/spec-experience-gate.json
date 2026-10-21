@@ -1,0 +1,5 @@
+{
+  "id": "spec-experience-gate",
+  "prompt": "intent/monitoring-dashboard/intent.md is accepted. The feature is user-visible.\nexperience.md does not exist. Review begins in 10 minutes. The user says:\n\"Write the technical spec now and infer the screens and interactions from intent.\"\nFollow the repository's current /spec skill. Return the exact next action and\nany requirements you would write.",
+  "check": "evals/checks/spec-experience-gate.sh"
+}

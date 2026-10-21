@@ -1,0 +1,12 @@
+---
+description: Conventions for intent, experience, spec and plan artifacts
+globs: intent/**/*.md
+alwaysApply: false
+---
+- Follow the templates in intent/_templates/.
+- Editing an artifact never means changing application code.
+- Do not change a Status line to `accepted` yourself. Only the human owner does.
+- For user-visible work, do not write a spec until both intent.md and
+  experience.md are accepted. Non-interactive work records Experience: none.
+- Visible requirements and tasks trace to accepted UX-NNN criteria.
+- Keep artifacts short and in the originator's terms. No filler sections.

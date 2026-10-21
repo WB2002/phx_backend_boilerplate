@@ -46,3 +46,9 @@ npm-debug.log
 # Dialyzer PLT cache (rebuilt locally and in CI).
 /priv/plts/
 
+# AI-SDLC guardrails and state
+.cursor/.fix-mode
+.cursor/.guardrails-edit
+.agents/.fix-mode
+.agents/.guardrails-edit
+.superpowers/

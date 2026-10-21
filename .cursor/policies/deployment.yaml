@@ -1,0 +1,7 @@
+rules:
+  - id: tier2_rollback_flag_and_human_approval
+    level: enforced
+    mechanism: docs/governance.md and .cursor/hooks/production-gate.sh
+  - id: canary_automation
+    level: deferred
+    mechanism: docs/release.md describes the stages; automation waits on docs/adr/0001-stack.md

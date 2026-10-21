@@ -1,0 +1,10 @@
+rules:
+  - id: no_secrets_in_source
+    level: enforced
+    mechanism: .cursor/hooks/block-secrets.sh and CI secret-scan (gitleaks)
+  - id: no_sensitive_data_in_logs
+    level: advisory
+    mechanism: .cursor/skills/security-baseline until a stack scanner exists
+  - id: authentication_required
+    level: advisory
+    mechanism: .cursor/skills/security-baseline until a stack scanner exists

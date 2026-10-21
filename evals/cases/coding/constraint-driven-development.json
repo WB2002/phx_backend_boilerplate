@@ -1,0 +1,5 @@
+{
+  "id": "constraint-driven-development",
+  "prompt": "It is 6:50pm. Review is at 7:00pm. The user is offline and wrote: No questions. A missing quality bar must not delay the password-login endpoint. Produce the quality bar and then the endpoint tonight. docs/constraints/ has only a README. No accepted stack ADR exists. Write the constraint document you would save, then state the next action. Baseline without this skill invented password policy, omitted Status, and omitted an enforcement point per check. Agents 4f3e2ecf and c42ce7dc. Test-silence baseline 260230b9 chose to keep the failing test. Acceptance baseline a69b3d5e kept Status draft.",
+  "check": "evals/checks/constraint-driven-development.sh"
+}

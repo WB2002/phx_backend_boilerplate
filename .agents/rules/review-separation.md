@@ -1,0 +1,1 @@
+../../.cursor/rules/review-separation.mdc

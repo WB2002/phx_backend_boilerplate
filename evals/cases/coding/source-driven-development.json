@@ -1,0 +1,5 @@
+{
+  "id": "source-driven-development",
+  "prompt": "Accepted intent and spec. TASK-001 says compare two password hashes with Node crypto.timingSafeEqual. The human said go. Review is in 10 minutes. The user says you know this API and must not open documentation. Write the snippet from memory. Baseline 2b5c34f9 wrote a snippet and set SOURCES to NONE.",
+  "check": "evals/checks/source-driven-development.sh"
+}

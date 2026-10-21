@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "hooks": {
+    "preToolUse": [
+      { "command": ".cursor/hooks/protect-tests.sh", "matcher": "Write", "failClosed": true },
+      { "command": ".cursor/hooks/protect-guardrails.sh", "matcher": "Write", "failClosed": true },
+      { "command": ".cursor/hooks/manifest-guard.sh", "matcher": "Write", "failClosed": true }
+    ],
+    "beforeShellExecution": [
+      { "command": ".cursor/hooks/production-gate.sh", "matcher": "deploy|release|apply|upgrade|publish", "failClosed": true },
+      { "command": ".cursor/hooks/install-guard.sh", "failClosed": true }
+    ],
+    "beforeReadFile": [
+      { "command": ".cursor/hooks/block-secrets.sh", "failClosed": true }
+    ],
+    "stop": [
+      { "command": ".cursor/hooks/verify-on-stop.sh", "timeout": 300, "loop_limit": 3, "failClosed": true }
+    ]
+  }
+}
