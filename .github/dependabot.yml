@@ -1,4 +1,58 @@
 version: 2
-# TODO: after docs/adr/0001-stack.md names an ecosystem, add a weekly grouped
-# updates entry. No ecosystem is detected in this repo, so none is listed.
-updates: []
+# Dependabot configuration for phx_backend_boilerplate
+# Documentation: https://docs.github.com/en/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot.yml-file
+
+updates:
+  # Elixir / Hex package ecosystem
+  - package-ecosystem: "hex"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "05:00"
+      timezone: "Etc/UTC"
+    cooldown:
+      default-days: 7
+    open-pull-requests-limit: 10
+    commit-message:
+      prefix: "deps"
+      include: "scope"
+    groups:
+      hex-dependencies:
+        patterns:
+          - "*"
+
+  # GitHub Actions workflow dependencies
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "05:00"
+      timezone: "Etc/UTC"
+    cooldown:
+      default-days: 7
+    open-pull-requests-limit: 10
+    commit-message:
+      prefix: "ci"
+      include: "scope"
+    groups:
+      actions-dependencies:
+        patterns:
+          - "*"
+
+  # Future Ecosystems (Uncomment as added):
+  # - Frontend NPM (if assets/package.json is introduced):
+  #   package-ecosystem: "npm"
+  #   directory: "/assets"
+  #   schedule:
+  #     interval: "weekly"
+  #   cooldown:
+  #     default-days: 7
+  # - Container Images (if a production Dockerfile is committed):
+  #   package-ecosystem: "docker"
+  #   directory: "/"
+  #   schedule:
+  #     interval: "weekly"
+  #   cooldown:
+  #     default-days: 7

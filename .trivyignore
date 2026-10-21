@@ -1,0 +1,14 @@
+# Trivy Vulnerability Suppression Baseline
+# Schema & format: https://aquasecurity.github.io/trivy/latest/docs/configuration/filtering/#trivyignore
+
+# CVE: CVE-2026-47071
+# Library: hackney (1.25.0)
+# Severity: HIGH
+# Title: Hackney ssl:connect/2 post-handshake upgrade timeout missing
+# Status: Triaged / Accepted Risk
+# Rationale: Pinned in mix.exs due to aws_encryption_sdk ~> 0.7 requirement.
+#            Application code exclusively uses :req (Req / Finch / Mint) for external HTTP requests.
+#            No untrusted TLS handshakes are processed through Hackney.
+# Tracking: Pending aws_encryption_sdk release supporting hackney >= 4.0.1
+# Review-By: 2026-12-31
+CVE-2026-47071

@@ -27,11 +27,21 @@ The format is based on Keep a Changelog.
   and after verification.
 - UX traceability from accepted `UX-NNN` criteria into specs and plans, with
   `Experience: none` for non-interactive work.
+- Language-agnostic GitHub Actions security scanning pipeline (`.github/workflows/security.yml`) integrating Gitleaks, Trivy (SCA & Misconfig), and Semgrep (SAST).
+- Active GitHub Dependabot configuration (`.github/dependabot.yml`) for `hex` and `github-actions` with 7-day cooldown protection.
+- Vulnerability baseline file (`.trivyignore`) tracking accepted risks with policy rationale.
+- Static analysis ignore file (`.semgrepignore`) filtering build, vendor, and ephemeral directories.
+- Security documentation: `docs/security-pipeline.md` and expanded `docs/threat-model.md`.
 ### Changed
 - `scripts/check-skills.sh` updated to verify both Cursor and Antigravity skills.
 - `.gitignore` updated to track `.agents/.fix-mode` and `.agents/.guardrails-edit`.
 - `AGENTS.md`, `README.md`, and `docs/ai-sdlc.md` updated to document dual Cursor and Antigravity workflow.
+- `.github/workflows/ci.yml` pinned all third-party GitHub Actions to verified commit SHAs.
+- `.cursor/policies/security.yaml` updated to reference CI security scanning workflows.
 ### Deprecated
 ### Removed
 ### Fixed
 ### Security
+- Added automated CI secret scanning via Gitleaks, SCA and IaC misconfiguration scanning via Trivy, and SAST via Semgrep.
+- Baselined known Hackney 1.25.0 timeout vulnerability (`CVE-2026-47071`) in `.trivyignore` with rationale and monitoring plan.
+- Pinned mutable GitHub Actions tags in `ci.yml` to mitigate tag-mutation supply chain risks.

@@ -1,0 +1,25 @@
+# Semgrep ignore file
+# Documentation: https://semgrep.dev/docs/ignoring-files-folders-code/
+
+# Dependencies and external packages
+deps/
+_build/
+node_modules/
+assets/node_modules/
+assets/vendor/
+
+# Test coverage, build artifacts, and PLT caches
+cover/
+priv/plts/
+priv/static/assets/
+priv/static/cache_manifest.json
+
+# Ephemeral runtime, crash dumps, and logs
+tmp/
+*.dump
+erl_crash.dump
+*.log
+
+# Version control and AI runtime state
+.git/
+.superpowers/
