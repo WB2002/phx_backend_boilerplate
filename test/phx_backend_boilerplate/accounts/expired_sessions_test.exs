@@ -14,8 +14,13 @@ defmodule PhxBackendBoilerplate.Accounts.ExpiredSessionsTest do
     :ok
   end
 
-  test "revoked? is false until revoke/1 is called" do
+  test "revoked? is false when no deny-list entry exists" do
     refute ExpiredSessions.revoked?(@session_id)
+  end
+
+  test "revoked? is false for an active session without a deny-list entry" do
+    {:ok, auth} = Accounts.register(@valid_attrs)
+    refute ExpiredSessions.revoked?(auth.session.id)
   end
 
   test "revoke/1 marks a session id as revoked" do
@@ -50,12 +55,12 @@ defmodule PhxBackendBoilerplate.Accounts.ExpiredSessionsTest do
       refute ExpiredSessions.revoked?(auth.session.id)
     end
 
-    test "revoked?/1 is true when cache get fails and session was deleted" do
+    test "revoked?/1 is false when cache get fails even after session was deleted" do
       {:ok, auth} = Accounts.register(@valid_attrs)
 
       :ok = Accounts.logout(auth.session.id)
 
-      assert ExpiredSessions.revoked?(auth.session.id)
+      refute ExpiredSessions.revoked?(auth.session.id)
     end
   end
 end

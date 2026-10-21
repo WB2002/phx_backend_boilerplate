@@ -9,6 +9,18 @@ defmodule PhxBackendBoilerplate.Files.StoredFile do
   @primary_key {:id, :binary_id, autogenerate: true}
   @foreign_key_type :binary_id
 
+  @type t :: %__MODULE__{
+          id: Ecto.UUID.t(),
+          filename: String.t() | nil,
+          content_type: String.t() | nil,
+          byte_size: non_neg_integer() | nil,
+          sha256: String.t() | nil,
+          storage_backend: String.t() | nil,
+          storage_key: String.t() | nil,
+          inserted_at: DateTime.t() | nil,
+          updated_at: DateTime.t() | nil
+        }
+
   schema "stored_files" do
     field :filename, :string
     field :content_type, :string

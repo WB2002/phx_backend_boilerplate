@@ -25,9 +25,8 @@ defmodule PhxBackendBoilerplate.Integrations.Stripe.Signature do
 
     with {:ok, timestamp} <- parse_timestamp(signature_header),
          :ok <- check_tolerance(timestamp, now, tolerance),
-         {:ok, v1_signatures} <- parse_v1_signatures(signature_header),
-         :ok <- check_signatures(payload, timestamp, secret, v1_signatures) do
-      :ok
+         {:ok, v1_signatures} <- parse_v1_signatures(signature_header) do
+      check_signatures(payload, timestamp, secret, v1_signatures)
     end
   end
 

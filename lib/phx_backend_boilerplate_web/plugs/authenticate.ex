@@ -4,8 +4,7 @@ defmodule PhxBackendBoilerplateWeb.Plugs.Authenticate do
 
   On success assigns `current_user_id` and `current_session_id`, and updates
   `RequestContext`. Rejects tokens when `Accounts.authenticate_access_token/1`
-  reports the session revoked (Redis deny list, with Postgres fallback when the
-  cache is unavailable).
+  reports the session revoked (Redis deny list).
   """
 
   import Plug.Conn

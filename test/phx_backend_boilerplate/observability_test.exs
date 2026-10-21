@@ -88,7 +88,7 @@ defmodule PhxBackendBoilerplate.ObservabilityTest do
 
     assert Enum.any?(calls, fn
              {:put_log_events, "/test/group", "test-stream", events, nil} ->
-               length(events) >= 1 and
+               events != [] and
                  Enum.all?(events, &match?(%{"timestamp" => _, "message" => _}, &1))
 
              _ ->

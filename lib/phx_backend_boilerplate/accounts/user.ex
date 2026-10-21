@@ -10,6 +10,15 @@ defmodule PhxBackendBoilerplate.Accounts.User do
   @primary_key {:id, :binary_id, autogenerate: true}
   @foreign_key_type :binary_id
 
+  @type t :: %__MODULE__{
+          id: Ecto.UUID.t(),
+          email: String.t() | nil,
+          password_digest: String.t() | nil,
+          stripe_customer_id: String.t() | nil,
+          inserted_at: DateTime.t() | nil,
+          updated_at: DateTime.t() | nil
+        }
+
   schema "users" do
     field :email, :string
     field :password, :string, virtual: true, redact: true

@@ -7,6 +7,8 @@ defmodule PhxBackendBoilerplate.Application do
 
   @impl true
   def start(_type, _args) do
+    :ok = PhxBackendBoilerplate.Accounts.Config.validate!()
+
     # Finch must start before ExAws/CloudWatch exporters use it.
     children =
       [

@@ -18,6 +18,7 @@ defmodule PhxBackendBoilerplateWeb.Plugs.Recaptcha do
   import Plug.Conn
 
   alias PhxBackendBoilerplate.Recaptcha
+  alias PhxBackendBoilerplateWeb.ClientIp
 
   @behaviour Plug
 
@@ -47,26 +48,7 @@ defmodule PhxBackendBoilerplateWeb.Plugs.Recaptcha do
       Map.get(params, :g_recaptcha_response)
   end
 
-  defp client_ip(conn) do
-    forwarded =
-      conn
-      |> get_req_header("x-forwarded-for")
-      |> List.first()
-
-    cond do
-      is_binary(forwarded) and String.trim(forwarded) != "" ->
-        forwarded
-        |> String.split(",", trim: true)
-        |> List.first()
-        |> String.trim()
-
-      is_tuple(conn.remote_ip) ->
-        conn.remote_ip |> :inet.ntoa() |> to_string()
-
-      true ->
-        nil
-    end
-  end
+  defp client_ip(conn), do: ClientIp.from_conn(conn)
 
   defp deny(conn) do
     conn

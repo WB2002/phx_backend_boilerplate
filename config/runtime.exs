@@ -454,8 +454,7 @@ if config_env() == :prod do
 
   maybe_ipv6 = if System.get_env("ECTO_IPV6") in ~w(true 1), do: [:inet6], else: []
 
-  config :phx_backend_boilerplate, PhxBackendBoilerplate.Repo,
-    # ssl: true,
+  repo_config = [
     url: database_url,
     pool_size: String.to_integer(System.get_env("POOL_SIZE") || "10"),
     timeout: 15_000,
@@ -464,9 +463,23 @@ if config_env() == :prod do
     parameters: [
       options: "-c statement_timeout=15s"
     ],
-    # For machines with several cores, consider starting multiple pools of `pool_size`
-    # pool_count: 4,
     socket_options: maybe_ipv6
+  ]
+
+  database_ssl? =
+    System.get_env("DATABASE_SSL") in ~w(true 1 yes) or
+      (is_binary(database_url) and
+         (String.contains?(database_url, "sslmode=require") or
+            String.contains?(database_url, "ssl=true")))
+
+  repo_config =
+    if database_ssl? do
+      Keyword.put(repo_config, :ssl, true)
+    else
+      repo_config
+    end
+
+  config :phx_backend_boilerplate, PhxBackendBoilerplate.Repo, repo_config
 
   # The secret key base is used to sign/encrypt cookies and other secrets.
   # A default value is used in config/dev.exs and config/test.exs but you
@@ -522,6 +535,9 @@ if config_env() == :prod do
     refresh_secret: refresh_secret
 
   config :phx_backend_boilerplate, PhxBackendBoilerplateWeb.AuthCookies, secure: true
+
+  config :phx_backend_boilerplate, PhxBackendBoilerplateWeb.ClientIp,
+    trust_x_forwarded_for: System.get_env("TRUST_X_FORWARDED_FOR") in ~w(true 1 yes)
 
   # ## SSL Support
   #

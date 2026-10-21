@@ -60,11 +60,7 @@ defmodule PhxBackendBoilerplateWeb.AuthController do
   end
 
   def logout(conn, _params) do
-    session_id = resolve_session_id(conn)
-
-    if session_id do
-      Accounts.logout(session_id)
-    end
+    Accounts.logout(conn.assigns.current_session_id)
 
     conn
     |> AuthCookies.delete_refresh()
@@ -99,31 +95,6 @@ defmodule PhxBackendBoilerplateWeb.AuthController do
 
   defp put_refresh_cookie(conn, auth) do
     AuthCookies.put_refresh(conn, auth.refresh_token, auth.session.expires_at)
-  end
-
-  defp resolve_session_id(conn) do
-    cond do
-      session_id = session_id_from_bearer(conn) ->
-        session_id
-
-      refresh_token = AuthCookies.get_refresh(conn) ->
-        case Accounts.session_id_from_token(refresh_token, :refresh) do
-          {:ok, session_id} -> session_id
-          _ -> nil
-        end
-
-      true ->
-        nil
-    end
-  end
-
-  defp session_id_from_bearer(conn) do
-    with ["Bearer " <> token] <- get_req_header(conn, "authorization"),
-         {:ok, session_id} <- Accounts.session_id_from_token(token, :access) do
-      session_id
-    else
-      _ -> nil
-    end
   end
 
   defp unauthorized(conn, detail) do

@@ -10,6 +10,7 @@ defmodule PhxBackendBoilerplate.MixProject do
       start_permanent: Mix.env() == :prod,
       aliases: aliases(),
       deps: deps(),
+      dialyzer: dialyzer(),
       listeners: [Phoenix.CodeReloader],
       releases: [
         phx_backend_boilerplate: [
@@ -112,7 +113,9 @@ defmodule PhxBackendBoilerplate.MixProject do
       {:fun_with_flags_ui, "~> 1.1", only: :dev, runtime: false},
       {:oban, "~> 2.19"},
       # Available at compile time in all envs (router `import`); mount stays behind :dev_routes.
-      {:oban_web, "~> 2.11"}
+      {:oban_web, "~> 2.11"},
+      {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
+      {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false}
     ]
   end
 
@@ -143,9 +146,18 @@ defmodule PhxBackendBoilerplate.MixProject do
         "compile --warnings-as-errors",
         "deps.unlock --unused",
         "format",
+        "credo --min-priority high",
         "gitleaks",
         "test"
       ]
+    ]
+  end
+
+  defp dialyzer do
+    [
+      plt_file: {:no_warn, "priv/plts/dialyzer.plt"},
+      plt_add_apps: [:mix, :ex_unit, :fun_with_flags, :fun_with_flags_ui],
+      ignore_warnings: ".dialyzer_ignore.exs"
     ]
   end
 end

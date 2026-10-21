@@ -14,7 +14,10 @@ defmodule PhxBackendBoilerplateWeb.Plugs.RateLimit do
   Each configured attribute gets its own Redis key shaped like
   `{id}:{attr}:{value}`. The request is denied if **any**
   bucket exceeds the limit. Missing optional attributes are skipped
-  (`:user_id`, `:fingerprint`, `:stripe_signature` when present).
+  (`:fingerprint`, `:stripe_signature` when present).
+
+  `:user_id` is read from `conn.assigns.current_user_id` when set (after
+  `Authenticate`), otherwise from the `x-user-id` header for public demo buckets.
   `:guest_id` is read only from `conn.assigns.guest_id` — run
   `EnsureGuestId` on public pipelines before rate limiting.
   `:stripe_signature` uses `"absent"` when the header is missing (for
@@ -34,6 +37,8 @@ defmodule PhxBackendBoilerplateWeb.Plugs.RateLimit do
   """
 
   import Plug.Conn
+
+  alias PhxBackendBoilerplateWeb.ClientIp
 
   @behaviour Plug
 
@@ -88,10 +93,16 @@ defmodule PhxBackendBoilerplateWeb.Plugs.RateLimit do
     end
   end
 
-  defp resolve_value(conn, :ip), do: client_ip(conn)
+  defp resolve_value(conn, :ip), do: ClientIp.from_conn(conn)
 
   defp resolve_value(conn, :user_id) do
-    conn |> get_req_header("x-user-id") |> List.first() |> present_or_nil()
+    conn.assigns
+    |> Map.get(:current_user_id)
+    |> present_or_nil()
+    |> case do
+      nil -> conn |> get_req_header("x-user-id") |> List.first() |> present_or_nil()
+      user_id -> user_id
+    end
   end
 
   defp resolve_value(conn, :fingerprint) do
@@ -108,28 +119,6 @@ defmodule PhxBackendBoilerplateWeb.Plugs.RateLimit do
     case conn |> get_req_header("stripe-signature") |> List.first() |> present_or_nil() do
       nil -> "absent"
       _present -> nil
-    end
-  end
-
-  defp client_ip(conn) do
-    forwarded =
-      conn
-      |> get_req_header("x-forwarded-for")
-      |> List.first()
-      |> present_or_nil()
-
-    cond do
-      forwarded ->
-        forwarded
-        |> String.split(",", trim: true)
-        |> List.first()
-        |> String.trim()
-
-      is_tuple(conn.remote_ip) ->
-        conn.remote_ip |> :inet.ntoa() |> to_string()
-
-      true ->
-        "unknown"
     end
   end
 

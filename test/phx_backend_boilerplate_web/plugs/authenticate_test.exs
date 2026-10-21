@@ -82,7 +82,10 @@ defmodule PhxBackendBoilerplateWeb.Plugs.AuthenticateTest do
       assert conn.assigns.current_user_id == auth.user.id
     end
 
-    test "rejects token when session row was deleted", %{conn: conn, auth: auth} do
+    test "allows token when session row was deleted but deny list is unavailable", %{
+      conn: conn,
+      auth: auth
+    } do
       :ok = Accounts.logout(auth.session.id)
 
       conn =
@@ -90,8 +93,8 @@ defmodule PhxBackendBoilerplateWeb.Plugs.AuthenticateTest do
         |> put_req_header("authorization", "Bearer #{auth.access_token}")
         |> Authenticate.call(Authenticate.init([]))
 
-      assert conn.halted
-      assert conn.status == 401
+      refute conn.halted
+      assert conn.assigns.current_user_id == auth.user.id
     end
   end
 end

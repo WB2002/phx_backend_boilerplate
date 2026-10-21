@@ -200,13 +200,13 @@ defmodule PhxBackendBoilerplateWeb.Router do
       post "/register", AuthController, :register
       post "/login", AuthController, :login
       post "/refresh", AuthController, :refresh
-      post "/logout", AuthController, :logout
     end
 
     scope "/auth" do
       pipe_through [:api, :api_authenticated]
 
       get "/me", AuthController, :me
+      post "/logout", AuthController, :logout
     end
 
     if Application.compile_env(:phx_backend_boilerplate, :demo_routes, false) do

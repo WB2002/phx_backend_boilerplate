@@ -2,22 +2,22 @@ defmodule PhxBackendBoilerplate.Accounts.ExpiredSessions do
   @moduledoc """
   Redis-backed deny list for recently logged-out sessions.
 
-  Each revoked session id is stored under `expired_sessions:<id>` with a 15-minute
-  TTL so in-flight access tokens fail the auth guard without hitting Postgres.
+  Each revoked session id is stored under `expired_sessions:<id>` with a TTL
+  aligned to `PhxBackendBoilerplate.Accounts` `deny_list_ttl` so in-flight
+  access tokens fail the auth guard without hitting Postgres on every request.
 
   Redis is a cache: logout always succeeds after the Postgres session delete;
-  deny-list writes are best-effort. When Redis is unavailable, `revoked?/1`
-  falls back to checking whether the session row still exists.
+  deny-list writes are best-effort. When Redis has no deny entry (`{:ok, nil}`),
+  the session is treated as active — access JWT expiry is the other revocation
+  boundary.
   """
 
   require Logger
 
-  alias PhxBackendBoilerplate.Accounts.Session
+  alias PhxBackendBoilerplate.Accounts.Config
   alias PhxBackendBoilerplate.Cache.L2
-  alias PhxBackendBoilerplate.Repo
 
   @prefix "expired_sessions:"
-  @ttl :timer.minutes(15)
 
   @doc """
   Marks a session id as expired in Redis.
@@ -28,7 +28,7 @@ defmodule PhxBackendBoilerplate.Accounts.ExpiredSessions do
   def revoke(session_id) when is_binary(session_id) do
     key = @prefix <> session_id
 
-    case safe_cache_put(key, true, ttl: @ttl) do
+    case safe_cache_put(key, true, ttl: deny_list_ttl_ms()) do
       :ok ->
         :ok
 
@@ -42,7 +42,7 @@ defmodule PhxBackendBoilerplate.Accounts.ExpiredSessions do
   end
 
   @doc """
-  Returns true when the session id was recently revoked via logout.
+  Returns true when the session id was revoked via logout (deny-list entry present).
   """
   @spec revoked?(String.t()) :: boolean()
   def revoked?(session_id) when is_binary(session_id) do
@@ -63,15 +63,12 @@ defmodule PhxBackendBoilerplate.Accounts.ExpiredSessions do
           "expired_sessions get failed session_id=#{session_id} reason=#{inspect(reason)}"
         )
 
-        session_revoked_in_postgres?(session_id)
+        false
     end
   end
 
-  defp session_revoked_in_postgres?(session_id) do
-    case Repo.get(Session, session_id) do
-      nil -> true
-      %Session{} -> false
-    end
+  defp deny_list_ttl_ms do
+    Config.deny_list_ttl_ms()
   end
 
   defp safe_cache_put(key, value, opts) do

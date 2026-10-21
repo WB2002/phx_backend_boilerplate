@@ -3,6 +3,8 @@ defmodule PhxBackendBoilerplateWeb.SocketLimits do
   Budgets for WebSocket upgrades, frames, connect params, and channel joins.
   """
 
+  alias PhxBackendBoilerplateWeb.ClientIp
+
   @max_frame_size 65_536
   @max_fragmented_message_size 262_144
   @max_connections 4_096
@@ -129,8 +131,11 @@ defmodule PhxBackendBoilerplateWeb.SocketLimits do
   def checkin_channel(_socket), do: :ok
 
   @spec peer_ip(map()) :: String.t() | nil
-  def peer_ip(%{peer_data: %{address: address}}) when is_tuple(address) do
-    address |> :inet.ntoa() |> to_string()
+  def peer_ip(connect_info) when is_map(connect_info) do
+    case ClientIp.from_connect_info(connect_info) do
+      "unknown" -> nil
+      ip -> ip
+    end
   end
 
   def peer_ip(_), do: nil

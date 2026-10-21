@@ -159,7 +159,9 @@ config :phx_backend_boilerplate, PhxBackendBoilerplate.LoadShed,
   regulators: [
     demo_expensive: {Regulator.Limit.Static, [limit: 2]},
     # Uploads hold connections for a long time; keep concurrency low.
-    demo_uploads: {Regulator.Limit.Static, [limit: 4]}
+    demo_uploads: {Regulator.Limit.Static, [limit: 4]},
+    # Caps concurrent SWR background refresh tasks cluster-wide per node.
+    swr_refresh: {Regulator.Limit.Static, [limit: 10]}
   ]
 
 # File uploads: validation, ClamAV, storage, resumable Range downloads.
@@ -313,15 +315,23 @@ config :phx_backend_boilerplate, Oban,
   queues: [default: 10],
   plugins: [
     {Oban.Plugins.Pruner, max_age: 60 * 60 * 24 * 7},
-    {Oban.Plugins.Lifeline, rescue_after: :timer.minutes(30)}
+    {Oban.Plugins.Lifeline, rescue_after: :timer.minutes(30)},
+    {Oban.Plugins.Cron,
+     crontab: [
+       {"0 * * * *", PhxBackendBoilerplate.Workers.PurgeExpiredSessionsJob}
+     ]}
   ]
 
 # Auth: JWT secrets and TTLs (secrets overridden per env in dev/test/runtime).
 config :phx_backend_boilerplate, PhxBackendBoilerplate.Accounts,
   access_ttl: :timer.minutes(15),
+  deny_list_ttl: :timer.minutes(15),
   session_inactivity_ttl: :timer.hours(24 * 7),
   access_secret: "dev-access-secret-change-me",
   refresh_secret: "dev-refresh-secret-change-me"
+
+# Rate-limit client IP: X-Forwarded-For trusted only when enabled (runtime.exs).
+config :phx_backend_boilerplate, PhxBackendBoilerplateWeb.ClientIp, trust_x_forwarded_for: false
 
 config :phx_backend_boilerplate, PhxBackendBoilerplateWeb.AuthCookies, secure: false
 

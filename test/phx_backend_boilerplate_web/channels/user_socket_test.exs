@@ -31,7 +31,8 @@ defmodule PhxBackendBoilerplateWeb.UserSocketTest do
 
   test "rejects connects when peer IP exceeds rate limit" do
     token = SocketAuth.sign(@claims)
-    peer = %{address: {203, 0, 113, 50}, port: 44_000, ssl_cert: nil}
+    n = :erlang.unique_integer([:positive])
+    peer = %{address: {203, 0, 113, rem(n, 256)}, port: 44_000, ssl_cert: nil}
     max = SocketLimits.max_connects_per_minute()
 
     for _ <- 1..max do

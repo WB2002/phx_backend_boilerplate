@@ -64,19 +64,24 @@ defmodule PhxBackendBoilerplate.Accounts do
   end
 
   @doc """
-  Validates a refresh token, rolls the session inactivity window, and re-issues tokens.
+  Validates a refresh token, rotates the refresh identifier, rolls the session
+  inactivity window, and re-issues tokens.
+
+  Reuse of a previously rotated refresh token revokes the session family.
   """
   @spec refresh(String.t()) ::
           {:ok, auth_bundle()} | {:error, :invalid_token | :session_expired | :session_not_found}
   def refresh(refresh_token) when is_binary(refresh_token) do
     with {:ok, claims} <- Tokens.verify_refresh(refresh_token),
          {:ok, session} <- fetch_active_session(claims["jti"]),
-         {:ok, session} <- roll_session(session),
+         :ok <- validate_refresh_rotation(session, claims["rti"]),
+         {:ok, session} <- rotate_refresh_token(session),
          {:ok, bundle} <- issue_tokens(session) do
       {:ok, bundle}
     else
       {:error, :not_found} -> {:error, :session_not_found}
       {:error, :expired} -> {:error, :session_expired}
+      {:error, :refresh_token_reused} -> {:error, :session_not_found}
       {:error, reason} -> {:error, reason}
     end
   end
@@ -144,22 +149,33 @@ defmodule PhxBackendBoilerplate.Accounts do
   def get_user!(id), do: Repo.get!(User, id)
 
   defp create_auth_bundle(%User{} = user) do
-    with {:ok, session} <- insert_session(user),
-         {:ok, bundle} <- issue_tokens(session) do
-      {:ok, bundle}
+    with {:ok, session} <- insert_session(user) do
+      issue_tokens(session)
     end
   end
 
   defp insert_session(%User{id: user_id}) do
-    %Session{user_id: user_id}
+    %Session{user_id: user_id, refresh_token_id: Ecto.UUID.generate()}
     |> Session.changeset(%{expires_at: session_expires_at()})
     |> Repo.insert()
   end
 
-  defp roll_session(%Session{} = session) do
+  defp rotate_refresh_token(%Session{} = session) do
     session
-    |> Session.changeset(%{expires_at: session_expires_at()})
+    |> Ecto.Changeset.change(%{
+      expires_at: session_expires_at(),
+      refresh_token_id: Ecto.UUID.generate()
+    })
     |> Repo.update()
+  end
+
+  defp validate_refresh_rotation(%Session{refresh_token_id: stored_rti}, presented_rti)
+       when is_binary(stored_rti) and is_binary(presented_rti) and stored_rti == presented_rti,
+       do: :ok
+
+  defp validate_refresh_rotation(%Session{id: session_id}, _presented_rti) do
+    logout(session_id)
+    {:error, :refresh_token_reused}
   end
 
   defp issue_tokens(%Session{} = session) do

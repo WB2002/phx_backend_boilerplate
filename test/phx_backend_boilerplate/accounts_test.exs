@@ -105,6 +105,17 @@ defmodule PhxBackendBoilerplate.AccountsTest do
 
       assert {:error, :session_not_found} = Accounts.refresh(auth.refresh_token)
     end
+
+    test "rotates refresh tokens and revokes session on reuse", %{auth: auth} do
+      old_refresh = auth.refresh_token
+
+      assert {:ok, refreshed} = Accounts.refresh(old_refresh)
+      assert refreshed.refresh_token != old_refresh
+
+      assert {:error, :session_not_found} = Accounts.refresh(old_refresh)
+      refute Repo.get(Session, auth.session.id)
+      assert ExpiredSessions.revoked?(auth.session.id)
+    end
   end
 
   describe "logout/1" do

@@ -168,6 +168,48 @@ defmodule PhxBackendBoilerplate.BillingTest do
     assert length(Repo.all(Subscription)) == 1
   end
 
+  test "handle_event/1 updates subscription via stripe_subscription_id when metadata absent", %{
+    auth: auth
+  } do
+    subscription_id = "sub_lookup_123"
+
+    assert :ok =
+             Billing.handle_event(
+               checkout_completed_event(auth.user.id, "pro", "subscription",
+                 subscription_id: subscription_id,
+                 event_id: "evt_checkout_lookup"
+               )
+             )
+
+    update_event = %{
+      "id" => "evt_sub_updated_no_meta",
+      "type" => "customer.subscription.updated",
+      "data" => %{
+        "object" => %{
+          "id" => subscription_id,
+          "status" => "past_due",
+          "current_period_end" => System.system_time(:second) + 86_400,
+          "items" => %{"data" => [%{"price" => %{"id" => "price_fake_pro"}}]}
+        }
+      }
+    }
+
+    assert :ok = Billing.handle_event(update_event)
+    assert [%Subscription{status: "past_due"}] = Repo.all(Subscription)
+  end
+
+  test "create_checkout_session/2 for pro includes subscription_data metadata", %{auth: auth} do
+    assert {:ok, _session} = Billing.create_checkout_session(auth.user, "pro")
+
+    assert Enum.any?(Fake.calls(), fn
+             {:create_checkout_session, params, _opts} ->
+               get_in(params, ["subscription_data", "metadata", "user_id"]) == auth.user.id
+
+             _ ->
+               false
+           end)
+  end
+
   test "handle_event/1 is idempotent", %{auth: auth} do
     event =
       checkout_completed_event(auth.user.id, "lifetime", "payment", event_id: "evt_idempotent")

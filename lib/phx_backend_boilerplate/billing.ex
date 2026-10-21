@@ -196,9 +196,11 @@ defmodule PhxBackendBoilerplate.Billing do
     end
   end
 
-  defp event_multi(event_id, type) do
-    Ecto.Multi.new()
-    |> Ecto.Multi.insert(
+  defp event_multi(event_id, type) when is_binary(event_id) and is_binary(type) do
+    multi = Ecto.Multi.new()
+
+    Ecto.Multi.insert(
+      multi,
       :stripe_event,
       StripeEvent.changeset(%StripeEvent{}, %{
         stripe_event_id: event_id,
@@ -259,20 +261,11 @@ defmodule PhxBackendBoilerplate.Billing do
   end
 
   defp subscription_attrs_from_stripe(subscription, checkout_session) do
-    user_id =
-      case checkout_session do
-        %{"metadata" => %{"user_id" => id}} when is_binary(id) -> id
-        _ -> subscription_user_id(subscription)
-      end
-
+    user_id = resolve_subscription_user_id(subscription, checkout_session)
     subscription_id = subscription["id"]
 
     if user_id && subscription_id do
-      plan =
-        case checkout_session do
-          %{"metadata" => %{"plan" => plan}} when is_binary(plan) -> plan
-          _ -> "pro"
-        end
+      plan = resolve_subscription_plan(subscription, checkout_session, subscription_id)
 
       {:ok,
        %{
@@ -339,16 +332,15 @@ defmodule PhxBackendBoilerplate.Billing do
   defp customer_idempotency_key(user_id), do: "customer-#{user_id}"
 
   defp checkout_session_params(%User{} = user, plan, customer_id) do
-    %{
+    metadata = %{"user_id" => user.id, "plan" => plan.key}
+
+    base = %{
       "customer" => customer_id,
       "client_reference_id" => user.id,
       "mode" => plan.mode,
       "success_url" => success_url(),
       "cancel_url" => cancel_url(),
-      "metadata" => %{
-        "user_id" => user.id,
-        "plan" => plan.key
-      },
+      "metadata" => metadata,
       "line_items" => [
         %{
           "price" => plan.price_id,
@@ -356,6 +348,12 @@ defmodule PhxBackendBoilerplate.Billing do
         }
       ]
     }
+
+    if plan.mode == "subscription" do
+      Map.put(base, "subscription_data", %{"metadata" => metadata})
+    else
+      base
+    end
   end
 
   defp checkout_idempotency_key(user_id, plan_key), do: "checkout-#{user_id}-#{plan_key}"
@@ -405,8 +403,59 @@ defmodule PhxBackendBoilerplate.Billing do
   defp session_user_id(%{"client_reference_id" => id}) when is_binary(id), do: id
   defp session_user_id(_), do: nil
 
+  defp resolve_subscription_user_id(subscription, checkout_session) do
+    checkout_session_user_id(checkout_session) ||
+      subscription_user_id(subscription) ||
+      user_id_from_subscription_id(subscription["id"]) ||
+      user_id_from_stripe_customer(subscription["customer"])
+  end
+
+  defp resolve_subscription_plan(subscription, checkout_session, subscription_id) do
+    checkout_session_plan(checkout_session) ||
+      subscription_plan(subscription) ||
+      plan_from_subscription_id(subscription_id) ||
+      "pro"
+  end
+
+  defp checkout_session_user_id(%{"metadata" => %{"user_id" => id}}) when is_binary(id), do: id
+  defp checkout_session_user_id(_), do: nil
+
+  defp checkout_session_plan(%{"metadata" => %{"plan" => plan}}) when is_binary(plan), do: plan
+  defp checkout_session_plan(_), do: nil
+
   defp subscription_user_id(%{"metadata" => %{"user_id" => id}}) when is_binary(id), do: id
   defp subscription_user_id(_), do: nil
+
+  defp subscription_plan(%{"metadata" => %{"plan" => plan}}) when is_binary(plan), do: plan
+  defp subscription_plan(_), do: nil
+
+  defp user_id_from_subscription_id(subscription_id) when is_binary(subscription_id) do
+    Subscription
+    |> where([s], s.stripe_subscription_id == ^subscription_id)
+    |> select([s], s.user_id)
+    |> Repo.one()
+  end
+
+  defp user_id_from_subscription_id(_), do: nil
+
+  defp user_id_from_stripe_customer(customer_id)
+       when is_binary(customer_id) and customer_id != "" do
+    User
+    |> where([u], u.stripe_customer_id == ^customer_id)
+    |> select([u], u.id)
+    |> Repo.one()
+  end
+
+  defp user_id_from_stripe_customer(_), do: nil
+
+  defp plan_from_subscription_id(subscription_id) when is_binary(subscription_id) do
+    Subscription
+    |> where([s], s.stripe_subscription_id == ^subscription_id)
+    |> select([s], s.plan)
+    |> Repo.one()
+  end
+
+  defp plan_from_subscription_id(_), do: nil
 
   defp subscription_price_id(%{"items" => %{"data" => [%{"price" => %{"id" => id}} | _]}}), do: id
   defp subscription_price_id(_), do: "unknown"

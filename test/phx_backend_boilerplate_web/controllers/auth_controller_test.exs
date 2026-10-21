@@ -149,6 +149,11 @@ defmodule PhxBackendBoilerplateWeb.AuthControllerTest do
       assert Map.has_key?(conn.resp_cookies, AuthCookies.cookie_name())
     end
 
+    test "POST /logout returns 401 without a token", %{conn: conn} do
+      conn = post(conn, ~p"/api/auth/logout")
+      assert json_response(conn, 401) == %{"errors" => %{"detail" => "Unauthorized"}}
+    end
+
     test "POST /logout clears the session and cookie", %{
       conn: conn,
       access_token: access_token,

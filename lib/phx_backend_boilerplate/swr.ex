@@ -39,9 +39,6 @@ defmodule PhxBackendBoilerplate.SWR do
   @doc """
   Fetches `key` via SWR.
 
-  @doc \"""
-  Fetches `key` via SWR.
-
   `fun` must return `{:ok, value}` or `{:error, reason}`.
 
   Options:
@@ -150,16 +147,27 @@ defmodule PhxBackendBoilerplate.SWR do
   end
 
   defp maybe_background_refresh(key, fun, cfg) do
-    case Stampede.try_lock(key, cfg.lock_ttl) do
-      :acquired ->
-        Task.Supervisor.start_child(PhxBackendBoilerplate.Cache.TaskSupervisor, fn ->
-          refresh(key, fun, cfg)
-        end)
-
+    case Regulator.ask(:swr_refresh) do
+      :dropped ->
         :ok
 
-      :contended ->
-        :ok
+      {:ok, ctx} ->
+        case Stampede.try_lock(key, cfg.lock_ttl) do
+          :acquired ->
+            Task.Supervisor.start_child(PhxBackendBoilerplate.Cache.TaskSupervisor, fn ->
+              try do
+                refresh(key, fun, cfg)
+              after
+                Regulator.ok(ctx)
+              end
+            end)
+
+            :ok
+
+          :contended ->
+            Regulator.ok(ctx)
+            :ok
+        end
     end
   end
 

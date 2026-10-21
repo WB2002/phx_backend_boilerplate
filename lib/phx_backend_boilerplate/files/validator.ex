@@ -43,9 +43,8 @@ defmodule PhxBackendBoilerplate.Files.Validator do
   def validate_one(%Upload{} = upload) do
     with :ok <- validate_size(upload),
          :ok <- validate_extension(upload),
-         :ok <- validate_declared_mime(upload),
-         :ok <- validate_magic(upload) do
-      :ok
+         :ok <- validate_declared_mime(upload) do
+      validate_magic(upload)
     end
   end
 
@@ -135,9 +134,6 @@ defmodule PhxBackendBoilerplate.Files.Validator do
 
       {:error, _} = err ->
         err
-
-      other ->
-        {:error, other}
     end
   end
 

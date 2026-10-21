@@ -13,6 +13,18 @@ defmodule PhxBackendBoilerplate.Audit.Log do
   @primary_key {:id, :binary_id, autogenerate: true}
   @foreign_key_type :binary_id
 
+  @type t :: %__MODULE__{
+          id: Ecto.UUID.t(),
+          action: String.t() | nil,
+          resource_type: String.t() | nil,
+          resource_id: String.t() | nil,
+          actor_id: String.t() | nil,
+          request_id: String.t() | nil,
+          correlation_id: String.t() | nil,
+          metadata: map(),
+          inserted_at: DateTime.t() | nil
+        }
+
   schema "audit_logs" do
     field :action, :string
     field :resource_type, :string

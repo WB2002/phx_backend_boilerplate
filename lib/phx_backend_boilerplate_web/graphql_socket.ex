@@ -56,5 +56,6 @@ defmodule PhxBackendBoilerplateWeb.GraphqlSocket do
   end
 
   @impl true
-  def id(%{assigns: %{current_user_id: user_id}}), do: "graphql_socket:#{user_id}"
+  def id(%{assigns: %{current_user_id: user_id, current_session_id: session_id}}),
+    do: "graphql_socket:#{user_id}:#{session_id}"
 end

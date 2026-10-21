@@ -58,7 +58,8 @@ config :phoenix,
 config :phx_backend_boilerplate, PhxBackendBoilerplate.LoadShed,
   regulators: [
     demo_expensive: {Regulator.Limit.Static, [limit: 2]},
-    demo_uploads: {Regulator.Limit.Static, [limit: 4]}
+    demo_uploads: {Regulator.Limit.Static, [limit: 4]},
+    swr_refresh: {Regulator.Limit.Static, [limit: 10]}
   ]
 
 config :phx_backend_boilerplate, PhxBackendBoilerplate.Files,

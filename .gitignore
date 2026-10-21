@@ -43,3 +43,6 @@ npm-debug.log
 .env.*
 !.env.example
 
+# Dialyzer PLT cache (rebuilt locally and in CI).
+/priv/plts/
+

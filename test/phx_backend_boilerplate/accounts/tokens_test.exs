@@ -13,7 +13,8 @@ defmodule PhxBackendBoilerplate.Accounts.TokensTest do
     session = %Session{
       id: @session_id,
       user_id: @user_id,
-      expires_at: expires_at
+      expires_at: expires_at,
+      refresh_token_id: Ecto.UUID.generate()
     }
 
     %{session: session}
@@ -33,6 +34,7 @@ defmodule PhxBackendBoilerplate.Accounts.TokensTest do
     assert refresh_claims["jti"] == @session_id
     assert refresh_claims["sub"] == @user_id
     assert refresh_claims["typ"] == "refresh"
+    assert refresh_claims["rti"] == session.refresh_token_id
   end
 
   test "access token cannot be verified as refresh" do
@@ -52,9 +54,13 @@ defmodule PhxBackendBoilerplate.Accounts.TokensTest do
     previous =
       Application.get_env(:phx_backend_boilerplate, PhxBackendBoilerplate.Accounts)
 
-    Application.put_env(:phx_backend_boilerplate, PhxBackendBoilerplate.Accounts,
-      access_secret: "other-access",
-      refresh_secret: "other-refresh"
+    Application.put_env(
+      :phx_backend_boilerplate,
+      PhxBackendBoilerplate.Accounts,
+      Keyword.merge(previous,
+        access_secret: "other-access",
+        refresh_secret: "other-refresh"
+      )
     )
 
     on_exit(fn ->
