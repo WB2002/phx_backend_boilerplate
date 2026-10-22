@@ -1,0 +1,44 @@
+# Deny everything by default
+*
+
+# Allowlist only required files and directories for production build
+!mix.exs
+!mix.lock
+!config/
+!lib/
+!priv/
+!assets/
+!rel/
+
+# Exclude developer environment and AI assistant metadata
+**/*.md
+.agents/
+.cursor/
+.github/
+.githooks/
+docs/
+intent/
+evals/
+quality/
+scripts/
+test/
+
+# Exclude build artifacts, dependencies, and local state
+_build/
+deps/
+tmp/
+.elixir_ls/
+.git/
+.gitignore
+erl_crash.dump
+
+# Exclude local static build caches and local uploads
+priv/plts/
+priv/uploads/
+priv/static/assets/
+priv/static/cache_manifest.json
+
+# Exclude dev/test configs and environment secrets
+config/dev.exs
+config/test.exs
+.env*
