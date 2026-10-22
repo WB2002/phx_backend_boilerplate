@@ -23,7 +23,17 @@ Expand, migrate, contract. Every migration is reversible and tested on productio
 
 ## Rollback command
 
-TODO: configure the rollback command — see docs/adr/0001-stack.md
+1. **Application Code Rollback**:
+   Redeploy the previous container image **digest** (e.g. `IMAGE@sha256:...`). Because migrations follow the expand-contract pattern, the N-1 image remains compatible with the N database schema.
+
+2. **Database Migration Rollback (Emergency last resort)**:
+   ```bash
+   docker run --rm -it --network host \
+     -e DATABASE_URL="$DATABASE_URL" \
+     -e RELEASE_COOKIE="$RELEASE_COOKIE" \
+     <image:tag> /app/bin/phx_backend_boilerplate eval \
+     "PhxBackendBoilerplate.Release.rollback(PhxBackendBoilerplate.Repo, <target_version>)"
+   ```
 
 ## Flag policy
 

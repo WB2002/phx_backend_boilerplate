@@ -7,6 +7,13 @@ The format is based on Keep a Changelog.
 ## [Unreleased]
 
 ### Added
+- Hardened multi-stage production `Dockerfile` compiling standalone OTP release with digest-pinned base images (`elixir:otp-27-slim` and `debian:bookworm-slim`).
+- Deny-by-default `.dockerignore` strictly excluding all `*.md` documentation, AI assistant configs (`.agents/`, `.cursor/`), tests, and local build artifacts.
+- Container security hardening: non-root UID `10001:10001`, stripped setuid/setgid bits, immutable `/app` directory (`go-w`), and `--read-only` root filesystem support.
+- `PhxBackendBoilerplate.Release` and `/app/bin/migrate` entrypoint for isolated database migrations prior to service boot.
+- `rel/env.sh.eex` release configuration requiring runtime `RELEASE_COOKIE` and disabling node distribution by default unless `DNS_CLUSTER_QUERY` is present.
+- Automated 9-point security verification suite `scripts/docker-verify.sh`.
+- Architecture Decision Record `docs/adr/0002-container-image.md` documenting container architecture.
 - Google Antigravity support: `.agents/` workspace configuration bridging skills, rules, agent personas, policies, and lifecycle hooks with `.cursor/` for dual Cursor and Antigravity compatibility.
 - `.agents/skills.json` and `.agents/skills` symlink exposing all 25 skills to Antigravity.
 - `.agents/rules/` exposing markdown rules (`intent-artifacts.md`, `review-separation.md`) to Antigravity.

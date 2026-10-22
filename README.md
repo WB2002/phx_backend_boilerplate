@@ -10,7 +10,61 @@ To start your Phoenix server:
 
 Now you can visit [`localhost:4000`](http://localhost:4000) from your browser.
 
-Ready to run in production? Please [check our deployment guides](https://phoenix.hexdocs.pm/deployment.html).
+Ready to run in production?
+
+### Production Docker Container
+
+The repository includes a hardened, multi-stage `Dockerfile` and a deny-by-default `.dockerignore` optimized for Kubernetes, AWS ECS/EKS, Fly.io, and Render:
+
+- **Minimal attack surface**: Built on Debian bookworm-slim; contains no compilers, package managers, `curl`, or `git` in runtime.
+- **Least privilege**: Runs as unprivileged non-root user `10001:10001` with no login shell.
+- **Read-only root filesystem**: Code directory `/app` is owned by root and immutable. Runs with `--read-only` when `/tmp` is mounted via tmpfs.
+- **Safe clustering & cookie**: Node distribution is disabled by default unless `DNS_CLUSTER_QUERY` is supplied. `RELEASE_COOKIE` must be injected at runtime.
+- **Context isolation**: Strictly excludes all markdown documentation, AI-assistant files (`.agents/`, `.cursor/`), tests, and local state.
+
+#### 1. Build the image
+```bash
+docker buildx build -t phx_backend_boilerplate:latest .
+```
+
+#### 2. Run Database Migrations
+Run pending migrations via the dedicated entrypoint before starting new pods/tasks:
+```bash
+docker run --rm \
+  -e DATABASE_URL="ecto://USER:PASS@HOST:5432/DB" \
+  -e RELEASE_COOKIE="secretcookie" \
+  --entrypoint /app/bin/migrate \
+  phx_backend_boilerplate:latest
+```
+
+#### 3. Run the Service
+```bash
+docker run -d \
+  --name phx_app \
+  --read-only \
+  --tmpfs /tmp \
+  --cap-drop ALL \
+  --security-opt no-new-privileges:true \
+  -p 4000:4000 \
+  -e DATABASE_URL="ecto://USER:PASS@HOST:5432/DB" \
+  -e REDIS_URL="redis://HOST:6379" \
+  -e SECRET_KEY_BASE="<mix phx.gen.secret>" \
+  -e ACCESS_TOKEN_SECRET="<mix phx.gen.secret>" \
+  -e REFRESH_TOKEN_SECRET="<mix phx.gen.secret>" \
+  -e RELEASE_COOKIE="<mix phx.gen.secret>" \
+  -e PHX_HOST="example.com" \
+  -e STORAGE_BACKEND="s3" \
+  -e S3_BUCKET="my-uploads-bucket" \
+  phx_backend_boilerplate:latest
+```
+
+> **Note on File Uploads**: When running with `--read-only`, the local storage adapter cannot write to `priv/uploads`. Configure `STORAGE_BACKEND=s3` or mount a persistent volume at your configured upload directory.
+
+#### 4. Automated Verification
+Run the 9-point security verification suite against any built image:
+```bash
+./scripts/docker-verify.sh phx_backend_boilerplate:latest
+```
 
 ## Health and readiness probes
 
