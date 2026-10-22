@@ -173,3 +173,77 @@ jobs:
         with:
           sarif_file: semgrep.sarif
           category: semgrep
+
+  # ---------------------------------------------------------------------------
+  # Container Image Build, Verification & Vulnerability Scan
+  # Builds the production image, runs the 9-point security verification,
+  # and scans for container CVEs via Trivy.
+  # ---------------------------------------------------------------------------
+  container-image:
+    name: Container Image Build & Scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Lint Dockerfile with Hadolint
+        uses: hadolint/hadolint-action@54c9adabb6471c259114f14166f43474f7246290 # v3.1.0
+        with:
+          dockerfile: Dockerfile
+          failure-threshold: warning
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@b5ca514318bd6ebac0fb2aedd5d36ec1b5c232a2 # v3.10.0
+
+      - name: Build production container image
+        uses: docker/build-push-action@471d1dc4e07e5cdedd4c2171150001c434f0b7a4 # v6.15.0
+        with:
+          context: .
+          file: Dockerfile
+          push: false
+          load: true
+          tags: phx_backend_boilerplate:verify
+          platforms: linux/amd64
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Assert Target Architecture
+        run: |
+          arch=$(docker image inspect phx_backend_boilerplate:verify --format '{{.Architecture}}')
+          if [ "$arch" != "amd64" ]; then
+            echo "Expected architecture amd64, got $arch" >&2
+            exit 1
+          fi
+
+      - name: Run Security Verification Suite
+        run: ./scripts/docker-verify.sh phx_backend_boilerplate:verify
+
+      - name: Scan Image for Vulnerabilities (Trivy)
+        uses: aquasecurity/trivy-action@18f2510ee396bbf400402947b394f2dd8c87dbb0 # 0.29.0
+        with:
+          scan-type: image
+          image-ref: phx_backend_boilerplate:verify
+          format: sarif
+          output: trivy-image-results.sarif
+          severity: ${{ inputs.fail_on_severity || 'HIGH,CRITICAL' }}
+          trivyignores: .trivyignore
+
+      - name: Upload Trivy Image SARIF Artifact
+        if: always() && hashFiles('trivy-image-results.sarif') != ''
+        uses: actions/upload-artifact@4cec3d8aa04e39d1a68397de0c4cd6fb9dce8ec1 # v4.6.1
+        with:
+          name: trivy-image-sarif
+          path: trivy-image-results.sarif
+          retention-days: 14
+
+      - name: Upload Trivy Image to GitHub Code Scanning
+        if: always() && hashFiles('trivy-image-results.sarif') != ''
+        uses: github/codeql-action/upload-sarif@4c50b6f6fd9dc6fe03111c2d045c8be2a724cce1 # v3.28.11
+        continue-on-error: true
+        with:
+          sarif_file: trivy-image-results.sarif
+          category: trivy-image

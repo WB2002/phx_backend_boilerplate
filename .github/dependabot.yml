@@ -49,10 +49,17 @@ updates:
   #     interval: "weekly"
   #   cooldown:
   #     default-days: 7
-  # - Container Images (if a production Dockerfile is committed):
-  #   package-ecosystem: "docker"
-  #   directory: "/"
-  #   schedule:
-  #     interval: "weekly"
-  #   cooldown:
-  #     default-days: 7
+  # Container Images (Production Dockerfile)
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "05:00"
+      timezone: "Etc/UTC"
+    cooldown:
+      default-days: 7
+    open-pull-requests-limit: 10
+    commit-message:
+      prefix: "deps"
+      include: "scope"
