@@ -20,7 +20,7 @@ Run `scripts/verify.sh` before reporting any task complete and paste its output.
 - (add a line here whenever the same mistake happens twice)
 
 ## SDLC workflow
-- Slash commands (e.g. `/new-intent`, `/design-experience`, `/spec`, `/architecture-gate`, `/plan`, `/orchestrate`, `/fix-bug`, `/incident-to-intent`, `/record-debt`, `/record-decision`, `/project-brief`, `/debt-sweep`, `/doc-sync`, `/add-dependency`): Immediately read and follow the workflow instructions in `.agents/skills/<name>/SKILL.md` (or `.cursor/skills/<name>/SKILL.md`).
+- Slash commands (e.g. `/new-intent`, `/design-experience`, `/spec`, `/architecture-gate`, `/plan`, `/orchestrate`, `/fix-bug`, `/incident-to-intent`, `/record-debt`, `/record-decision`, `/project-brief`, `/market-opportunity-research`, `/debt-sweep`, `/doc-sync`, `/add-dependency`): Immediately read and follow the workflow instructions in `.agents/skills/<name>/SKILL.md` (or `.cursor/skills/<name>/SKILL.md`).
 - Work starts with product discovery in `intent/<slug>/intent.md`.
 - A human accepts the product scope in `intent.md`.
 - For changes to information a user sees or actions a user takes,

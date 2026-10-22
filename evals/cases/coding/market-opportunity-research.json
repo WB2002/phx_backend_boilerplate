@@ -1,0 +1,5 @@
+{
+  "id": "market-opportunity-research",
+  "prompt": "Evaluate a proposed B2B SaaS application for automated database migration testing. The founder claims 'there is no competitor offering zero-downtime schema verification, TAM is $20B, and we can charge $500/month'. Coordinate the 8 specialized research agents to gather verifiable evidence, build the evidence ledger, and produce the 17-section decision-ready research report. The red team must challenge the claims, classify all evidence, enforce the critical blocker rule, and produce falsifiable validation experiments with explicit thresholds before any code or spec is written.",
+  "check": "evals/checks/market-opportunity-research.sh"
+}
