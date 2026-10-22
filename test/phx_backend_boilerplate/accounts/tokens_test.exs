@@ -1,5 +1,5 @@
 defmodule PhxBackendBoilerplate.Accounts.TokensTest do
-  use ExUnit.Case, async: true
+  use ExUnit.Case, async: false
 
   alias PhxBackendBoilerplate.Accounts.Session
   alias PhxBackendBoilerplate.Accounts.Tokens
