@@ -15,4 +15,7 @@ Then write:
 
 Do not mark the ADR accepted. Recommend the first intent: a walking skeleton
 (repo, CI, staging deploy, logging and metrics, and one end-to-end test) before
-any feature work.
+any feature work. When the proposed stack in `docs/adr/0001-stack.md` uses
+Cloudflare (Workers, Pages, D1, R2, Zero Trust, or WAF), also recommend loading
+the official platform skills (`npx skills add cloudflare/skills`) once the ADR
+is accepted.

@@ -1,16 +1,10 @@
 rules:
   - id: no_secrets_in_source
     level: enforced
-    mechanism: .cursor/hooks/block-secrets.sh, .githooks/pre-commit, and CI secret-scan (.github/workflows/security.yml with gitleaks)
-  - id: dependency_vulnerability_scanning
-    level: enforced
-    mechanism: CI dependency scan (.github/workflows/security.yml with trivy and .trivyignore baseline)
-  - id: static_application_security_testing
-    level: enforced
-    mechanism: CI SAST scan (.github/workflows/security.yml with semgrep and .semgrepignore)
+    mechanism: .cursor/hooks/block-secrets.sh and CI secret-scan (gitleaks)
   - id: no_sensitive_data_in_logs
     level: advisory
-    mechanism: .cursor/skills/security-baseline and Semgrep audit rules
+    mechanism: .cursor/skills/security-baseline until a stack scanner exists
   - id: authentication_required
     level: advisory
     mechanism: .cursor/skills/security-baseline until a stack scanner exists

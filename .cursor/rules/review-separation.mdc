@@ -4,9 +4,19 @@ alwaysApply: true
 ---
 
 - Do not review your own change.
-- Hand UX, architecture, security, tests, performance, and code quality to the
-  readonly agents: ux-reviewer, architect, security-reviewer, test-engineer,
-  performance-reviewer, and code-reviewer.
+- Hand UX, architecture, security, database, compliance, tests, performance, QA,
+  and code quality to the readonly agents: `ux-reviewer`,
+  `security-reviewer-baseline`, `security-reviewer-hardening`,
+  `database-reviewer`, `compliance-reviewer`, `tests-planner`,
+  `performance-reviewer`, `qa`, and `code-reviewer`.
+- Specialist implementers (`frontend-engineer`, `backend-engineer`,
+  `performance-implementer`, `security-implementer`, `database-implementer`,
+  `compliance-implementer`, `tests-writer`, `infrastructure`, `devops`,
+  `observability`) never review their own diffs.
+- Dispatch readonly reviews proportionally to risk tier and scoped to changed files:
+  Tier 0 uses `qa` + `code-reviewer`; Tier 1 adds `security-reviewer-baseline` and
+  specialists matching `git diff`; Tier 2 and CRITICAL run the full specialist suite
+  and `/ship-check`.
 - Find failures before suggesting improvements.
 - Do not set Status to accepted on an intent, experience, spec, plan, ADR,
   architecture gate, orchestration log, or debt record.
