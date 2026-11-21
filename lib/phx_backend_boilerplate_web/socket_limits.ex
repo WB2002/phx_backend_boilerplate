@@ -78,13 +78,21 @@ defmodule PhxBackendBoilerplateWeb.SocketLimits do
       ip ->
         key = "ws_connect:ip:#{ip}"
 
-        case PhxBackendBoilerplate.RateLimit.hit(
-               key,
-               @connect_scale_ms,
-               max_connects_per_minute()
-             ) do
-          {:allow, _count} -> :ok
-          {:deny, _retry_after_ms} -> :error
+        case rate_limit_hit(key, @connect_scale_ms, max_connects_per_minute()) do
+          {:allow, _count} ->
+            :ok
+
+          {:deny, _retry_after_ms} ->
+            :error
+
+          {:error, reason} ->
+            :telemetry.execute(
+              [:phx_backend_boilerplate, :rate_limit, :error],
+              %{count: 1},
+              %{reason: inspect(reason), surface: "websocket"}
+            )
+
+            :ok
         end
     end
   end
@@ -139,6 +147,13 @@ defmodule PhxBackendBoilerplateWeb.SocketLimits do
   end
 
   def peer_ip(_), do: nil
+
+  defp rate_limit_hit(key, scale, limit) do
+    case Application.get_env(:phx_backend_boilerplate, __MODULE__, [])[:hit] do
+      fun when is_function(fun, 3) -> fun.(key, scale, limit)
+      _ -> PhxBackendBoilerplate.RateLimit.hit(key, scale, limit)
+    end
+  end
 
   defp spawn_monitor_cleanup(pid) do
     spawn(fn ->

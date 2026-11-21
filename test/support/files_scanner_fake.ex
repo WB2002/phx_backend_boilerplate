@@ -24,9 +24,9 @@ defmodule PhxBackendBoilerplate.Files.Scanner.Fake do
     end
   end
 
-  def set_result(result) do
+  def set_result(scan_outcome) do
     ensure_started()
-    Agent.update(__MODULE__, &Map.put(&1, :result, result))
+    Agent.update(__MODULE__, &Map.put(&1, :result, scan_outcome))
   end
 
   def calls do

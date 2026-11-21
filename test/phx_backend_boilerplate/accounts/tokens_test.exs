@@ -47,6 +47,45 @@ defmodule PhxBackendBoilerplate.Accounts.TokensTest do
     assert {:error, _} = Tokens.verify_access(refresh)
   end
 
+  test "rejects expired access token" do
+    past = DateTime.utc_now(:second) |> DateTime.add(-120, :second)
+    exp_unix = DateTime.to_unix(past)
+
+    claims = %{
+      "sub" => @user_id,
+      "jti" => @session_id,
+      "typ" => "access",
+      "iat" => exp_unix,
+      "exp" => exp_unix
+    }
+
+    accounts = Application.fetch_env!(:phx_backend_boilerplate, PhxBackendBoilerplate.Accounts)
+    signer = Joken.Signer.create("HS256", Keyword.fetch!(accounts, :access_secret))
+    {:ok, token, _} = Joken.encode_and_sign(claims, signer)
+
+    assert {:error, _} = Tokens.verify_access(token)
+  end
+
+  test "rejects expired refresh token", %{session: session} do
+    past = DateTime.utc_now(:second) |> DateTime.add(-120, :second)
+    exp_unix = DateTime.to_unix(past)
+
+    claims = %{
+      "sub" => @user_id,
+      "jti" => @session_id,
+      "rti" => session.refresh_token_id,
+      "typ" => "refresh",
+      "iat" => exp_unix,
+      "exp" => exp_unix
+    }
+
+    accounts = Application.fetch_env!(:phx_backend_boilerplate, PhxBackendBoilerplate.Accounts)
+    signer = Joken.Signer.create("HS256", Keyword.fetch!(accounts, :refresh_secret))
+    {:ok, token, _} = Joken.encode_and_sign(claims, signer)
+
+    assert {:error, _} = Tokens.verify_refresh(token)
+  end
+
   test "tokens signed with different secrets are not interchangeable", %{session: session} do
     access = Tokens.generate_access_token(@user_id, @session_id)
     refresh = Tokens.generate_refresh_token(@user_id, session)

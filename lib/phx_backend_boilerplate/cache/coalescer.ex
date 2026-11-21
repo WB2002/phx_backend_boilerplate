@@ -80,11 +80,11 @@ defmodule PhxBackendBoilerplate.Cache.Coalescer do
   end
 
   @impl true
-  def handle_cast({:done, key, from_pid, result}, state) do
+  def handle_cast({:done, key, from_pid, coalesced_value}, state) do
     case Map.get(state.keys, key) do
       %{leader: ^from_pid, monitor_ref: ref, waiters: waiters} ->
         Process.demonitor(ref, [:flush])
-        notify_waiters(waiters, result)
+        notify_waiters(waiters, coalesced_value)
         {:noreply, %{state | keys: Map.delete(state.keys, key)}}
 
       _ ->
@@ -146,7 +146,7 @@ defmodule PhxBackendBoilerplate.Cache.Coalescer do
 
   defp await_result(key, ref, timeout) do
     receive do
-      {^ref, result} -> result
+      {^ref, coalesced_value} -> coalesced_value
     after
       timeout ->
         GenServer.cast(__MODULE__, {:leave, key, self(), ref})
@@ -165,9 +165,9 @@ defmodule PhxBackendBoilerplate.Cache.Coalescer do
 
   defp lead(key, fun) do
     try do
-      result = fun.()
-      GenServer.cast(__MODULE__, {:done, key, self(), result})
-      result
+      coalesced_value = fun.()
+      GenServer.cast(__MODULE__, {:done, key, self(), coalesced_value})
+      coalesced_value
     catch
       kind, reason ->
         GenServer.cast(__MODULE__, {:done, key, self(), {:error, :coalescer_crash}})
@@ -188,9 +188,9 @@ defmodule PhxBackendBoilerplate.Cache.Coalescer do
     |> Keyword.get(:timeout, 15_000)
   end
 
-  defp notify_waiters(waiters, result) do
+  defp notify_waiters(waiters, coalesced_value) do
     Enum.each(waiters, fn {pid, ref} ->
-      send(pid, {ref, result})
+      send(pid, {ref, coalesced_value})
     end)
   end
 end

@@ -51,13 +51,13 @@ defmodule PhxBackendBoilerplate.DeadlineTest do
     Deadline.start(1_000)
     outer = Deadline.current()
 
-    result =
+    inner_outcome =
       Deadline.with(System.monotonic_time(:millisecond) + 50, fn ->
         assert Deadline.remaining() <= 50
         :inner
       end)
 
-    assert result == :inner
+    assert inner_outcome == :inner
     assert Deadline.current() == outer
 
     Deadline.with(nil, fn ->

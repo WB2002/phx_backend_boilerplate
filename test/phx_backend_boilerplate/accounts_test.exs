@@ -23,6 +23,13 @@ defmodule PhxBackendBoilerplate.AccountsTest do
       assert auth.expires_in == Accounts.Tokens.access_ttl_seconds()
     end
 
+    test "trims and downcases email on registration" do
+      assert {:ok, auth} =
+               Accounts.register(Map.put(@valid_attrs, "email", "  USER@Example.com  "))
+
+      assert auth.user.email == "user@example.com"
+    end
+
     test "rejects duplicate emails" do
       assert {:ok, _} = Accounts.register(@valid_attrs)
 
@@ -106,6 +113,16 @@ defmodule PhxBackendBoilerplate.AccountsTest do
       assert {:error, :session_not_found} = Accounts.refresh(auth.refresh_token)
     end
 
+    test "allows only one concurrent refresh for the same token", %{auth: auth} do
+      tasks =
+        for _ <- 1..2 do
+          Task.async(fn -> Accounts.refresh(auth.refresh_token) end)
+        end
+
+      results = Enum.map(tasks, &Task.await/1)
+      assert Enum.count(results, &match?({:ok, _}, &1)) == 1
+    end
+
     test "rotates refresh tokens and revokes session on reuse", %{auth: auth} do
       old_refresh = auth.refresh_token
 
@@ -119,6 +136,19 @@ defmodule PhxBackendBoilerplate.AccountsTest do
   end
 
   describe "logout/1" do
+    test "broadcasts graphql socket disconnect" do
+      {:ok, auth} = Accounts.register(@valid_attrs)
+      user_id = auth.user.id
+      session_id = auth.session.id
+      topic = "graphql_socket:#{user_id}:#{session_id}"
+
+      Phoenix.PubSub.subscribe(PhxBackendBoilerplate.PubSub, topic)
+
+      :ok = Accounts.logout(session_id)
+
+      assert_receive %Phoenix.Socket.Broadcast{event: "disconnect", topic: ^topic}
+    end
+
     test "deletes the session and marks it expired in Redis" do
       {:ok, auth} = Accounts.register(@valid_attrs)
 

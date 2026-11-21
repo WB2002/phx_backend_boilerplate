@@ -69,7 +69,8 @@ The primary workflow is located at [`.github/workflows/security.yml`](file:///Us
 
 ### C. Static Application Security Testing (Semgrep)
 
-* **Configuration**: Uses standard community open-source rules (`--config auto`, covering OWASP Top 10, CWE Top 25, and language-specific rules) running inside the official `semgrep/semgrep` Docker container.
+* **Configuration**: Uses standard community open-source rules (`--config auto`, covering OWASP Top 10, CWE Top 25, and language-specific rules) plus project guardrails (`scripts/ci/semgrep-guardrails.yaml`) running inside the official `semgrep/semgrep` Docker container.
+* **Guardrails (`mix semgrep.guardrails`)**: Enforces the banned placeholder identifier denylist on `lib/` (aligned with `CredoChecks.BannedIdentifierNames`) via `./scripts/ci/run-semgrep-guardrails.sh`, wired into `mix precommit` and `.github/workflows/ci.yml`.
 * **Ignored Paths**: Excluded directories specified in [`.semgrepignore`](file:///Users/axonitsolutions/Documents/personal/phx_backend_boilerplate/.semgrepignore).
 * **Failure Policy**: Any blocking high-confidence finding fails CI (`--error`).
 

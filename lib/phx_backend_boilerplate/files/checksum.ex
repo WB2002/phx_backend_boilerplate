@@ -21,8 +21,8 @@ defmodule PhxBackendBoilerplate.Files.Checksum do
       digest =
         path
         |> File.stream!(chunk, [])
-        |> Enum.reduce(:crypto.hash_init(:sha256), fn data, acc ->
-          :crypto.hash_update(acc, data)
+        |> Enum.reduce(:crypto.hash_init(:sha256), fn bytes_chunk, acc ->
+          :crypto.hash_update(acc, bytes_chunk)
         end)
         |> :crypto.hash_final()
         |> Base.encode16(case: :lower)

@@ -62,12 +62,12 @@ defmodule PhxBackendBoilerplate.HTTP do
         |> Keyword.put(:retry, false)
         |> put_body_collector(max_body_bytes)
 
-      {request, result} =
+      {request, req_outcome} =
         merged
         |> Req.new()
         |> Req.Request.run_request()
 
-      result
+      req_outcome
       |> wrap_run_result()
       |> classify_timeout(remaining_before, config_timeout)
       |> maybe_reject_oversized(request)
@@ -141,7 +141,7 @@ defmodule PhxBackendBoilerplate.HTTP do
     end
   end
 
-  defp maybe_reject_oversized(result, _request), do: result
+  defp maybe_reject_oversized(outcome, _request), do: outcome
 
   defp maybe_put_propagation_headers(opts) do
     propagation = RequestContext.propagation_headers() ++ Deadline.propagation_headers()
@@ -186,5 +186,5 @@ defmodule PhxBackendBoilerplate.HTTP do
     end
   end
 
-  defp classify_timeout(result, _remaining_before, _config_timeout), do: result
+  defp classify_timeout(outcome, _remaining_before, _config_timeout), do: outcome
 end

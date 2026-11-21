@@ -7,6 +7,7 @@ Cursor (`.cursor/`) and Antigravity (`.agents/`) share the same skills, rules, p
 - Run server: `mix phx.server`
 - One test file: `mix test test/path/to_test.exs` · rerun failures: `mix test --failed`
 - Format & lint fixes: `mix format` · check: `mix format --check-formatted && mix credo --min-priority high`
+- Banned placeholder identifiers: enforced by `CredoChecks.BannedIdentifierNames` and `mix semgrep.guardrails` (denylist aligned with NestJS/Go/FastAPI). See `.cursor/rules/elaborate-naming.mdc`.
 - Precommit check: `mix precommit` (compiles with `--warnings-as-errors`, unlocks unused deps, formats, credos, gitleaks, tests)
 - Verification script: `scripts/verify.sh` (builds with `--warnings-as-errors`, checks format, runs credo, runs tests if DB is up on 5433)
 

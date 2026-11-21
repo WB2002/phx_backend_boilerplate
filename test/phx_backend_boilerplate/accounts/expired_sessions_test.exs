@@ -55,12 +55,12 @@ defmodule PhxBackendBoilerplate.Accounts.ExpiredSessionsTest do
       refute ExpiredSessions.revoked?(auth.session.id)
     end
 
-    test "revoked?/1 is false when cache get fails even after session was deleted" do
+    test "revoked?/1 is true when cache get fails and session row was deleted" do
       {:ok, auth} = Accounts.register(@valid_attrs)
 
       :ok = Accounts.logout(auth.session.id)
 
-      refute ExpiredSessions.revoked?(auth.session.id)
+      assert ExpiredSessions.revoked?(auth.session.id)
     end
   end
 end

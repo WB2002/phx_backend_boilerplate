@@ -173,6 +173,24 @@ defmodule PhxBackendBoilerplateWeb.Plugs.RateLimitTest do
     refute conn2.halted
   end
 
+  test "allows request when rate limit backend returns error" do
+    id = "rate_limit_redis_error_#{System.unique_integer()}"
+    opts = RateLimit.init(id: id, scale: :timer.minutes(1), limit: 1)
+
+    previous = Application.get_env(:phx_backend_boilerplate, RateLimit, [])
+
+    Application.put_env(
+      :phx_backend_boilerplate,
+      RateLimit,
+      Keyword.put(previous, :hit, fn _, _, _ -> {:error, :redis_down} end)
+    )
+
+    on_exit(fn -> Application.put_env(:phx_backend_boilerplate, RateLimit, previous) end)
+
+    conn = call_with_ip(unique_ip(), opts)
+    refute conn.halted
+  end
+
   defp call_with_ip(ip, opts) do
     build_conn()
     |> Map.put(:remote_ip, ip)

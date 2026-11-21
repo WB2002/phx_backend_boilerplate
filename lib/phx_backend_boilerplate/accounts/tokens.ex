@@ -69,6 +69,7 @@ defmodule PhxBackendBoilerplate.Accounts.Tokens do
   def verify_access(token) when is_binary(token) do
     with {:ok, claims} <- Joken.verify(token, access_signer()),
          :ok <- validate_typ(claims, @access_typ),
+         :ok <- validate_time_claims(claims),
          :ok <- validate_access_claims(claims) do
       {:ok, claims}
     else
@@ -84,6 +85,7 @@ defmodule PhxBackendBoilerplate.Accounts.Tokens do
   def verify_refresh(token) when is_binary(token) do
     with {:ok, claims} <- Joken.verify(token, refresh_signer()),
          :ok <- validate_typ(claims, @refresh_typ),
+         :ok <- validate_time_claims(claims),
          :ok <- validate_refresh_claims(claims) do
       {:ok, claims}
     else
@@ -118,6 +120,24 @@ defmodule PhxBackendBoilerplate.Accounts.Tokens do
 
   defp validate_typ(%{"typ" => typ}, expected) when typ == expected, do: :ok
   defp validate_typ(_claims, _expected), do: :error
+
+  defp validate_time_claims(claims) do
+    now = DateTime.utc_now(:second) |> DateTime.to_unix()
+
+    with :ok <- validate_nbf(claims, now),
+         :ok <- validate_exp(claims, now) do
+      :ok
+    else
+      :error -> :error
+    end
+  end
+
+  defp validate_nbf(%{"nbf" => nbf}, now) when is_integer(nbf) and nbf > now, do: :error
+  defp validate_nbf(%{"nbf" => nbf}, _now) when is_integer(nbf), do: :ok
+  defp validate_nbf(_claims, _now), do: :ok
+
+  defp validate_exp(%{"exp" => exp}, now) when is_integer(exp) and exp > now, do: :ok
+  defp validate_exp(_claims, _now), do: :error
 
   defp validate_access_claims(%{"sub" => sub, "jti" => jti})
        when is_binary(sub) and is_binary(jti),

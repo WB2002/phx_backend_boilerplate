@@ -60,9 +60,9 @@ defmodule PhxBackendBoilerplate.SWR do
     meta = Keyword.get(opts, :telemetry_metadata, %{}) |> Map.put(:key, key)
 
     :telemetry.span([:phx_backend_boilerplate, :swr, :fetch], meta, fn ->
-      result = do_fetch(key, fun, cfg)
-      stop_meta = span_meta(result, meta)
-      {result, stop_meta}
+      fetch_outcome = do_fetch(key, fun, cfg)
+      stop_meta = span_meta(fetch_outcome, meta)
+      {fetch_outcome, stop_meta}
     end)
   end
 
@@ -191,7 +191,7 @@ defmodule PhxBackendBoilerplate.SWR do
     meta = %{key: key}
 
     :telemetry.span([:phx_backend_boilerplate, :swr, :refresh], meta, fn ->
-      result =
+      refresh_outcome =
         try do
           case fun.() do
             {:ok, value} ->
@@ -212,7 +212,7 @@ defmodule PhxBackendBoilerplate.SWR do
           Stampede.unlock(key)
         end
 
-      {result, Map.put(meta, :result, elem_result(result))}
+      {refresh_outcome, Map.put(meta, :result, elem_result(refresh_outcome))}
     end)
   end
 

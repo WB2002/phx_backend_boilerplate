@@ -35,9 +35,11 @@ defmodule PhxBackendBoilerplate.Accounts.User do
     user
     |> cast(attrs, [:email, :password])
     |> validate_required([:email, :password])
-    |> validate_format(:email, ~r/^[^\s]+@[^\s]+$/, message: "must be a valid email")
     |> validate_length(:password, min: 8, max: Digest.max_plaintext_bytes())
-    |> update_change(:email, &String.downcase/1)
+    |> update_change(:email, fn email ->
+      email |> String.trim() |> String.downcase()
+    end)
+    |> validate_format(:email, ~r/\A[^\s]+@[^\s]+\z/u, message: "must be a valid email")
     |> unique_constraint(:email)
     |> put_password_digest()
   end

@@ -299,10 +299,30 @@ end
 
 aws_region = System.get_env("AWS_REGION") || "us-east-1"
 
-config :ex_aws,
-  region: aws_region,
-  access_key_id: System.get_env("AWS_ACCESS_KEY_ID") || "test",
-  secret_access_key: System.get_env("AWS_SECRET_ACCESS_KEY") || "test"
+ex_aws_config =
+  case {System.get_env("AWS_ACCESS_KEY_ID"), System.get_env("AWS_SECRET_ACCESS_KEY")} do
+    {access_key_id, secret_access_key}
+    when is_binary(access_key_id) and access_key_id != "" and
+           is_binary(secret_access_key) and secret_access_key != "" ->
+      [
+        region: aws_region,
+        access_key_id: access_key_id,
+        secret_access_key: secret_access_key
+      ]
+
+    _ ->
+      if config_env() == :prod do
+        [region: aws_region]
+      else
+        [
+          region: aws_region,
+          access_key_id: "test",
+          secret_access_key: "test"
+        ]
+      end
+  end
+
+config :ex_aws, ex_aws_config
 
 # Point ExAws at LocalStack (or any custom endpoint) when AWS_ENDPOINT_URL is set.
 case System.get_env("AWS_ENDPOINT_URL") do
@@ -536,8 +556,16 @@ if config_env() == :prod do
 
   config :phx_backend_boilerplate, PhxBackendBoilerplateWeb.AuthCookies, secure: true
 
+  trusted_proxy_cidrs =
+    case System.get_env("TRUSTED_PROXY_CIDRS") do
+      nil -> []
+      "" -> []
+      raw -> raw |> String.split(",", trim: true) |> Enum.reject(&(&1 == ""))
+    end
+
   config :phx_backend_boilerplate, PhxBackendBoilerplateWeb.ClientIp,
-    trust_x_forwarded_for: System.get_env("TRUST_X_FORWARDED_FOR") in ~w(true 1 yes)
+    trust_x_forwarded_for: System.get_env("TRUST_X_FORWARDED_FOR") in ~w(true 1 yes),
+    trusted_proxy_cidrs: trusted_proxy_cidrs
 
   # ## SSL Support
   #

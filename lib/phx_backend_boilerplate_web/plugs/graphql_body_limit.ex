@@ -17,7 +17,15 @@ defmodule PhxBackendBoilerplateWeb.Plugs.GraphqlBodyLimit do
   def init(opts), do: opts
 
   @impl true
-  def call(%Plug.Conn{request_path: "/api/graphql"} = conn, _opts) do
+  def call(conn, _opts) do
+    if graphql_api_path?(conn) do
+      enforce_limit(conn)
+    else
+      conn
+    end
+  end
+
+  defp enforce_limit(conn) do
     max_bytes = Config.max_query_bytes() + @envelope_slack_bytes
 
     case content_length(conn) do
@@ -39,7 +47,8 @@ defmodule PhxBackendBoilerplateWeb.Plugs.GraphqlBodyLimit do
     end
   end
 
-  def call(conn, _opts), do: conn
+  defp graphql_api_path?(%Plug.Conn{path_info: ["api", "graphql" | _]}), do: true
+  defp graphql_api_path?(_conn), do: false
 
   defp content_length(conn) do
     case get_req_header(conn, "content-length") do

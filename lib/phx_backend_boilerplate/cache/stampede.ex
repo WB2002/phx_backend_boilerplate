@@ -24,7 +24,7 @@ defmodule PhxBackendBoilerplate.Cache.Stampede do
     lock_key = lock_key(key)
     start = System.monotonic_time()
 
-    result =
+    lock_outcome =
       case L2.put_new(lock_key, true, ttl: lock_ttl_ms) do
         {:ok, true} -> :acquired
         {:ok, false} -> :contended
@@ -34,10 +34,10 @@ defmodule PhxBackendBoilerplate.Cache.Stampede do
     :telemetry.execute(
       [:phx_backend_boilerplate, :swr, :lock, :stop],
       %{duration: System.monotonic_time() - start},
-      %{key: key, result: result}
+      %{key: key, result: lock_outcome}
     )
 
-    result
+    lock_outcome
   end
 
   @doc """

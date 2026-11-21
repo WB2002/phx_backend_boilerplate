@@ -78,9 +78,10 @@ defmodule PhxBackendBoilerplateWeb.Plugs.RateLimit do
         value ->
           key = "#{id}:#{attr}:#{value}"
 
-          case PhxBackendBoilerplate.RateLimit.hit(key, scale, limit) do
+          case rate_limit_hit(key, scale, limit) do
             {:allow, _count} -> {:cont, {:allow, acc}}
             {:deny, retry_after_ms} -> {:halt, {:deny, acc, retry_after_ms}}
+            {:error, reason} -> rate_limit_backend_error(acc, reason)
           end
       end
     end)
@@ -91,6 +92,23 @@ defmodule PhxBackendBoilerplateWeb.Plugs.RateLimit do
       {:deny, conn, retry_after_ms} ->
         deny(conn, retry_after_ms)
     end
+  end
+
+  defp rate_limit_hit(key, scale, limit) do
+    case Application.get_env(:phx_backend_boilerplate, __MODULE__, [])[:hit] do
+      fun when is_function(fun, 3) -> fun.(key, scale, limit)
+      _ -> PhxBackendBoilerplate.RateLimit.hit(key, scale, limit)
+    end
+  end
+
+  defp rate_limit_backend_error(conn, reason) do
+    :telemetry.execute(
+      [:phx_backend_boilerplate, :rate_limit, :error],
+      %{count: 1},
+      %{reason: inspect(reason)}
+    )
+
+    {:cont, {:allow, conn}}
   end
 
   defp resolve_value(conn, :ip), do: ClientIp.from_conn(conn)

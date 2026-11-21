@@ -6,15 +6,18 @@ defmodule PhxBackendBoilerplate.Files.ChecksumTest do
   setup do
     path = Path.join(System.tmp_dir!(), "checksum-#{System.unique_integer([:positive])}.bin")
     # Larger than test hash_chunk_bytes (1024) so we exercise multi-chunk hashing.
-    data = :crypto.strong_rand_bytes(3500)
-    File.write!(path, data)
+    payload = :crypto.strong_rand_bytes(3500)
+    File.write!(path, payload)
     on_exit(fn -> File.rm(path) end)
-    %{path: path, data: data}
+    %{path: path, payload: payload}
   end
 
-  test "hashes incrementally without loading whole file semantics", %{path: path, data: data} do
+  test "hashes incrementally without loading whole file semantics", %{
+    path: path,
+    payload: payload
+  } do
     expected =
-      :crypto.hash(:sha256, data)
+      :crypto.hash(:sha256, payload)
       |> Base.encode16(case: :lower)
 
     assert {:ok, ^expected} = Checksum.sha256_file(path)

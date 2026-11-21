@@ -1,0 +1,10 @@
+---
+description: Domain-specific naming; no placeholder identifiers
+alwaysApply: true
+---
+
+# Elaborate naming
+
+- Do not use placeholder local names: `data`, `result`, `item`, `temp`, `tmp`, `obj`, `val`, `foo`, `bar`, `baz`, `qux`, `thing`, `stuff`, `dummy`, `test_var`, `my_var`, `var1`, etc.
+- Booleans: `is_`, `has_`, `can_`, `should_` prefixes (functions and variables).
+- Credo enforces banned bindings; Semgrep guardrails duplicate the denylist on `lib/`.

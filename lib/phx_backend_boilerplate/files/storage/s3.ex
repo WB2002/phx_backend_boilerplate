@@ -58,17 +58,17 @@ defmodule PhxBackendBoilerplate.Files.Storage.S3 do
               end
 
             case get_range(key, off, n) do
-              {:ok, data} when byte_size(data) == 0 ->
+              {:ok, bytes_chunk} when byte_size(bytes_chunk) == 0 ->
                 {:halt, :done}
 
-              {:ok, data} ->
+              {:ok, bytes_chunk} ->
                 next_rem =
                   case rem do
                     :infinity -> :infinity
-                    left -> left - byte_size(data)
+                    left -> left - byte_size(bytes_chunk)
                   end
 
-                {[data], {off + byte_size(data), next_rem}}
+                {[bytes_chunk], {off + byte_size(bytes_chunk), next_rem}}
 
               {:error, :not_found} ->
                 {:halt, :not_found}

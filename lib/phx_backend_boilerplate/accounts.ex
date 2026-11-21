@@ -11,6 +11,7 @@ defmodule PhxBackendBoilerplate.Accounts do
   alias PhxBackendBoilerplate.Accounts.User
   alias PhxBackendBoilerplate.Crypto.Digest
   alias PhxBackendBoilerplate.Repo
+  alias PhxBackendBoilerplateWeb.Endpoint
 
   @type auth_bundle :: %{
           user: User.t(),
@@ -73,10 +74,7 @@ defmodule PhxBackendBoilerplate.Accounts do
           {:ok, auth_bundle()} | {:error, :invalid_token | :session_expired | :session_not_found}
   def refresh(refresh_token) when is_binary(refresh_token) do
     with {:ok, claims} <- Tokens.verify_refresh(refresh_token),
-         {:ok, session} <- fetch_active_session(claims["jti"]),
-         :ok <- validate_refresh_rotation(session, claims["rti"]),
-         {:ok, session} <- rotate_refresh_token(session),
-         {:ok, bundle} <- issue_tokens(session) do
+         {:ok, bundle} <- refresh_in_transaction(claims) do
       {:ok, bundle}
     else
       {:error, :not_found} -> {:error, :session_not_found}
@@ -94,8 +92,14 @@ defmodule PhxBackendBoilerplate.Accounts do
   """
   @spec logout(String.t()) :: :ok
   def logout(session_id) when is_binary(session_id) do
+    session = Repo.get(Session, session_id)
     Repo.delete_all(from s in Session, where: s.id == ^session_id)
     ExpiredSessions.revoke(session_id)
+
+    if session do
+      disconnect_graphql_socket(session.user_id, session_id)
+    end
+
     :ok
   end
 
@@ -121,13 +125,13 @@ defmodule PhxBackendBoilerplate.Accounts do
   @spec session_id_from_token(String.t(), :access | :refresh) ::
           {:ok, String.t()} | {:error, :invalid_token}
   def session_id_from_token(token, type) when is_binary(token) and type in [:access, :refresh] do
-    result =
+    verification =
       case type do
         :access -> Tokens.verify_access(token)
         :refresh -> Tokens.verify_refresh(token)
       end
 
-    case result do
+    case verification do
       {:ok, %{"jti" => session_id}} when is_binary(session_id) ->
         {:ok, session_id}
 
@@ -160,6 +164,49 @@ defmodule PhxBackendBoilerplate.Accounts do
     |> Repo.insert()
   end
 
+  defp refresh_in_transaction(%{"jti" => session_id, "rti" => presented_rti}) do
+    Repo.transaction(fn ->
+      session =
+        Session
+        |> where([s], s.id == ^session_id)
+        |> lock("FOR UPDATE")
+        |> Repo.one()
+
+      case session do
+        nil ->
+          Repo.rollback(:not_found)
+
+        %Session{} = locked ->
+          now = DateTime.utc_now(:second)
+
+          cond do
+            DateTime.compare(locked.expires_at, now) != :gt ->
+              Repo.rollback(:expired)
+
+            locked.refresh_token_id != presented_rti ->
+              disconnect_graphql_socket(locked.user_id, session_id)
+              Repo.delete_all(from s in Session, where: s.id == ^session_id)
+              ExpiredSessions.revoke(session_id)
+              Repo.rollback(:refresh_token_reused)
+
+            true ->
+              case rotate_refresh_token(locked) do
+                {:ok, rotated} ->
+                  {:ok, bundle} = issue_tokens(rotated)
+                  bundle
+
+                {:error, changeset} ->
+                  Repo.rollback(changeset)
+              end
+          end
+      end
+    end)
+    |> case do
+      {:ok, bundle} -> {:ok, bundle}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
   defp rotate_refresh_token(%Session{} = session) do
     session
     |> Ecto.Changeset.change(%{
@@ -167,15 +214,6 @@ defmodule PhxBackendBoilerplate.Accounts do
       refresh_token_id: Ecto.UUID.generate()
     })
     |> Repo.update()
-  end
-
-  defp validate_refresh_rotation(%Session{refresh_token_id: stored_rti}, presented_rti)
-       when is_binary(stored_rti) and is_binary(presented_rti) and stored_rti == presented_rti,
-       do: :ok
-
-  defp validate_refresh_rotation(%Session{id: session_id}, _presented_rti) do
-    logout(session_id)
-    {:error, :refresh_token_reused}
   end
 
   defp issue_tokens(%Session{} = session) do
@@ -195,20 +233,6 @@ defmodule PhxBackendBoilerplate.Accounts do
      }}
   end
 
-  defp fetch_active_session(session_id) do
-    case Repo.get(Session, session_id) do
-      %Session{expires_at: expires_at} = session ->
-        if DateTime.compare(expires_at, DateTime.utc_now(:second)) == :gt do
-          {:ok, session}
-        else
-          {:error, :expired}
-        end
-
-      nil ->
-        {:error, :not_found}
-    end
-  end
-
   defp session_expires_at do
     inactivity_ttl =
       accounts_config()
@@ -216,6 +240,11 @@ defmodule PhxBackendBoilerplate.Accounts do
       |> div(1_000)
 
     DateTime.utc_now(:second) |> DateTime.add(inactivity_ttl, :second)
+  end
+
+  defp disconnect_graphql_socket(user_id, session_id)
+       when is_binary(user_id) and is_binary(session_id) do
+    Endpoint.broadcast("graphql_socket:#{user_id}:#{session_id}", "disconnect", %{})
   end
 
   defp accounts_config do

@@ -28,7 +28,7 @@
           "priv/*/seeds.exs",
           "mix.exs"
         ],
-        excluded: [~r"/_build/", ~r"/deps/", ~r"/node_modules/"]
+        excluded: [~r"/_build/", ~r"/deps/", ~r"/node_modules/", ~r"/test/fixtures/"]
       },
       #
       # Load and configure plugins here:
@@ -38,7 +38,10 @@
       # If you create your own checks, you must specify the source files for
       # them here, so they can be loaded by Credo before running the analysis.
       #
-      requires: [],
+      requires: [
+        "lib/phx_backend_boilerplate/lint/banned_identifiers.ex",
+        "lib/credo_checks/banned_identifier_names.ex"
+      ],
       #
       # If you want to enforce a style guide and need a more traditional linting
       # experience, you can change `strict` to `true` below:
@@ -111,6 +114,7 @@
           {Credo.Check.Readability.TrailingWhiteSpace, []},
           {Credo.Check.Readability.UnnecessaryAliasExpansion, []},
           {Credo.Check.Readability.VariableNames, []},
+          {CredoChecks.BannedIdentifierNames, []},
           {Credo.Check.Readability.WithSingleClause, []},
 
           #

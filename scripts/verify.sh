@@ -1,12 +1,19 @@
 #!/bin/bash
 set -euo pipefail
 
-# Ensure mix and elixir are reachable in non-interactive / hook subshells
-for p in /opt/homebrew/bin "$HOME/.asdf/shims" /usr/local/bin "$HOME/.local/bin"; do
-  if [ -d "$p" ]; then
-    export PATH="$p:$PATH"
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+cd "$ROOT"
+export TOOLCHAIN_ROOT="$ROOT"
+
+cleanup_verify() {
+  if [ -n "${TOOLCHAIN_DOCKER_WORKDIR:-}" ]; then
+    rm -rf "${TOOLCHAIN_DOCKER_WORKDIR}"
   fi
-done
+}
+trap cleanup_verify EXIT
+
+# shellcheck source=lib/toolchain.sh
+. "$ROOT/scripts/lib/toolchain.sh"
 
 echo "== build =="
 mix compile --warnings-as-errors

@@ -110,7 +110,7 @@ defmodule PhxBackendBoilerplate.RequestContextTest do
 
     outer = RequestContext.current()
 
-    result =
+    inner_outcome =
       RequestContext.with(
         %{request_id: "inner-req", correlation_id: "inner-corr", user_id: nil},
         fn ->
@@ -119,7 +119,7 @@ defmodule PhxBackendBoilerplate.RequestContextTest do
         end
       )
 
-    assert result == :inner
+    assert inner_outcome == :inner
     assert RequestContext.current() == outer
 
     RequestContext.with(nil, fn ->

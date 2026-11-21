@@ -69,8 +69,8 @@ defmodule PhxBackendBoilerplate.Files.Storage.Local do
           n = min(chunk, rem)
 
           case :file.pread(file, off, n) do
-            {:ok, data} when is_binary(data) and byte_size(data) > 0 ->
-              {[data], {file, off + byte_size(data), rem - byte_size(data)}}
+            {:ok, bytes_read} when is_binary(bytes_read) and byte_size(bytes_read) > 0 ->
+              {[bytes_read], {file, off + byte_size(bytes_read), rem - byte_size(bytes_read)}}
 
             _ ->
               {:halt, file}

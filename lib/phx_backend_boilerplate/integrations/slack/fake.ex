@@ -17,7 +17,7 @@ defmodule PhxBackendBoilerplate.Integrations.Slack.Fake do
       when is_binary(text) and is_binary(channel) and is_list(opts) do
     cfg = Application.get_env(:phx_backend_boilerplate, __MODULE__, [])
     calls = Keyword.get(cfg, :calls, [])
-    result = Keyword.get(cfg, :result, {:ok, :fake})
+    configured_reply = Keyword.get(cfg, :result, {:ok, :fake})
 
     Application.put_env(
       :phx_backend_boilerplate,
@@ -25,7 +25,7 @@ defmodule PhxBackendBoilerplate.Integrations.Slack.Fake do
       Keyword.put(cfg, :calls, calls ++ [{text, channel, opts}])
     )
 
-    result
+    configured_reply
   end
 
   @doc """

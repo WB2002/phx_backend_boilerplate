@@ -91,6 +91,8 @@ defmodule PhxBackendBoilerplate.Billing do
     :updated_at
   ]
 
+  @purchase_replace_fields [:status, :stripe_payment_intent_id, :updated_at]
+
   @doc """
   Records a Stripe webhook event idempotently and applies side effects.
 
@@ -147,6 +149,27 @@ defmodule PhxBackendBoilerplate.Billing do
       _ ->
         {:skip, event_id, "checkout.session.completed"}
     end
+  end
+
+  defp prepare_event(%{
+         "id" => event_id,
+         "type" => "checkout.session.async_payment_succeeded",
+         "data" => %{"object" => session}
+       }) do
+    async_payment_event(
+      event_id,
+      session,
+      "checkout.session.async_payment_succeeded",
+      "completed"
+    )
+  end
+
+  defp prepare_event(%{
+         "id" => event_id,
+         "type" => "checkout.session.async_payment_failed",
+         "data" => %{"object" => session}
+       }) do
+    async_payment_event(event_id, session, "checkout.session.async_payment_failed", "failed")
   end
 
   defp prepare_event(%{"id" => event_id, "type" => type, "data" => %{"object" => subscription}})
@@ -219,6 +242,32 @@ defmodule PhxBackendBoilerplate.Billing do
     )
   end
 
+  defp purchase_upsert_multi(multi, attrs) do
+    Ecto.Multi.insert(
+      multi,
+      :purchase,
+      Purchase.changeset(%Purchase{}, attrs),
+      on_conflict: {:replace, @purchase_replace_fields},
+      conflict_target: :stripe_checkout_session_id
+    )
+  end
+
+  defp async_payment_event(event_id, session, type, status) do
+    case session["mode"] do
+      "payment" ->
+        case purchase_attrs_from_session(session, status: status) do
+          {:ok, attrs} ->
+            {:ok, event_multi(event_id, type) |> purchase_upsert_multi(attrs)}
+
+          :skip ->
+            {:skip, event_id, type}
+        end
+
+      _ ->
+        {:skip, event_id, type}
+    end
+  end
+
   defp subscription_multi(multi, attrs) do
     Ecto.Multi.insert(
       multi,
@@ -242,21 +291,31 @@ defmodule PhxBackendBoilerplate.Billing do
     end)
   end
 
-  defp purchase_attrs_from_session(session) do
+  defp purchase_attrs_from_session(session, opts \\ []) do
     user_id = session_user_id(session)
     session_id = session["id"]
+    status = Keyword.get(opts, :status, purchase_status_from_session(session))
 
-    if user_id && session_id do
+    if user_id && session_id && is_binary(status) do
       {:ok,
        %{
          user_id: user_id,
          plan: get_in(session, ["metadata", "plan"]) || "lifetime",
          stripe_checkout_session_id: session_id,
          stripe_payment_intent_id: session["payment_intent"],
-         status: "completed"
+         status: status
        }}
     else
       :skip
+    end
+  end
+
+  defp purchase_status_from_session(session) do
+    case session["payment_status"] do
+      "paid" -> "completed"
+      "no_payment_required" -> "completed"
+      "unpaid" -> "pending"
+      _ -> nil
     end
   end
 

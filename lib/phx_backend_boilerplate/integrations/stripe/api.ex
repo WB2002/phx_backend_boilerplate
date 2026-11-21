@@ -156,8 +156,8 @@ defmodule PhxBackendBoilerplate.Integrations.Stripe.Api do
   defp encode_pair({key, list}) when is_binary(key) and is_list(list) do
     list
     |> Enum.with_index()
-    |> Enum.flat_map(fn {item, index} when is_map(item) ->
-      Enum.flat_map(item, fn {nested_key, nested_value} ->
+    |> Enum.flat_map(fn {line_item, index} when is_map(line_item) ->
+      Enum.flat_map(line_item, fn {nested_key, nested_value} ->
         encode_pair({"#{key}[#{index}][#{nested_key}]", nested_value})
       end)
     end)

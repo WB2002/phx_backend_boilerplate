@@ -126,6 +126,63 @@ defmodule PhxBackendBoilerplate.BillingTest do
     assert [%Purchase{plan: "lifetime", status: "completed"}] = Repo.all(Purchase)
   end
 
+  test "handle_event/1 stores unpaid checkout as pending", %{auth: auth} do
+    event =
+      checkout_completed_event(auth.user.id, "lifetime", "payment",
+        payment_status: "unpaid",
+        event_id: "evt_unpaid"
+      )
+
+    assert :ok = Billing.handle_event(event)
+    assert [%Purchase{status: "pending"}] = Repo.all(Purchase)
+  end
+
+  test "handle_event/1 completes purchase on async_payment_succeeded", %{auth: auth} do
+    unpaid =
+      checkout_completed_event(auth.user.id, "lifetime", "payment",
+        payment_status: "unpaid",
+        event_id: "evt_async_base"
+      )
+
+    assert :ok = Billing.handle_event(unpaid)
+
+    success = %{
+      "id" => "evt_async_success",
+      "type" => "checkout.session.async_payment_succeeded",
+      "data" => %{
+        "object" =>
+          get_in(unpaid, ["data", "object"])
+          |> Map.put("payment_status", "paid")
+      }
+    }
+
+    assert :ok = Billing.handle_event(success)
+    assert [%Purchase{status: "completed"}] = Repo.all(Purchase)
+  end
+
+  test "handle_event/1 marks purchase failed on async_payment_failed", %{auth: auth} do
+    unpaid =
+      checkout_completed_event(auth.user.id, "lifetime", "payment",
+        payment_status: "unpaid",
+        event_id: "evt_async_fail_base"
+      )
+
+    assert :ok = Billing.handle_event(unpaid)
+
+    failed = %{
+      "id" => "evt_async_failed",
+      "type" => "checkout.session.async_payment_failed",
+      "data" => %{
+        "object" =>
+          get_in(unpaid, ["data", "object"])
+          |> Map.put("payment_status", "unpaid")
+      }
+    }
+
+    assert :ok = Billing.handle_event(failed)
+    assert [%Purchase{status: "failed"}] = Repo.all(Purchase)
+  end
+
   test "handle_event/1 upserts subscription", %{auth: auth} do
     event =
       checkout_completed_event(auth.user.id, "pro", "subscription",
@@ -311,6 +368,7 @@ defmodule PhxBackendBoilerplate.BillingTest do
     session = %{
       "id" => "cs_test_#{plan}",
       "mode" => mode,
+      "payment_status" => Keyword.get(opts, :payment_status, "paid"),
       "payment_intent" => "pi_test_#{plan}",
       "client_reference_id" => user_id,
       "metadata" => %{"user_id" => user_id, "plan" => plan},

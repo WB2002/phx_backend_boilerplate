@@ -40,6 +40,9 @@ This document outlines the threat model for the Phoenix Backend Boilerplate appl
 4. **Injection & Deserialization Attacks**: Unvalidated input passed into SQL, shell commands, or unsafe Erlang binary deserialization (`:erlang.binary_to_term/1`).
 5. **Mutable GitHub Actions Tag Poisoning**: Third-party GitHub Action tag (e.g. `@v1`) is compromised and runs arbitrary code on the runner.
 6. **Malicious File Uploads**: Uploading weaponized files bypassing file-type restrictions or malware scanners.
+7. **Session & JWT Lifecycle Abuse**: Stolen access JWTs after `exp`, Redis deny-list fail-open during logout verification, refresh rotation races, and live GraphQL sockets after logout.
+8. **Proxy & Rate-Limit Spoofing**: Client-controlled `X-Forwarded-For` leftmost hops and Redis outages breaking Hammer rate limiters.
+9. **Billing Webhook Integrity**: Async Stripe checkout sessions recorded as paid before funds settle.
 
 ---
 
@@ -57,3 +60,8 @@ This document outlines the threat model for the Phoenix Backend Boilerplate appl
 | **Context & Secret Leakage in Images** | Deny-by-default `.dockerignore` excluding all `*.md`, `.agents/`, `.cursor/`, tests, and secrets; no secrets in `ARG`/`ENV`; multi-stage build | `Dockerfile`, `.dockerignore`, `scripts/docker-verify.sh` |
 | **EPMD / Node Discovery Exposure** | Distribution disabled by default (`RELEASE_DISTRIBUTION=none`) unless `DNS_CLUSTER_QUERY` configured; cookie required at runtime | `rel/env.sh.eex`, `scripts/docker-verify.sh` |
 | **Residual Risk (Hackney)** | Hackney 1.25.0 timeout risk (`CVE-2026-47071`) baselined in `.trivyignore`; application code uses `:req` (Finch/Mint), not Hackney | Documented in `docs/security-pipeline.md` and `.trivyignore` |
+| **JWT & Session Revocation** | Access/refresh JWT `exp`/`nbf` validation; Postgres fallback when Redis deny-list reads fail; `FOR UPDATE` refresh rotation; GraphQL socket `disconnect` on logout | `Accounts.Tokens`, `Accounts.ExpiredSessions`, `Accounts`, `GraphqlSocket` |
+| **Rate Limit & Client IP** | Right-trust `X-Forwarded-For` parsing with trusted proxy CIDRs; rate-limiter Redis errors fail open with telemetry | `ClientIp`, `Plugs.RateLimit`, `SocketLimits` |
+| **Stripe Payment Status** | `payment_status == "paid"` before completed purchases; async payment webhook handlers | `Billing` |
+| **Pre-Auth GraphQL Body Budget** | Path-based GraphQL body cap via `GraphqlBodyLimit` + capped `CacheBodyReader` on `/api/graphql` | `endpoint.ex`, `Plugs.GraphqlBodyLimit` |
+| **Production AWS Credentials** | Static ExAws keys only when env vars set in `:prod` (IAM role chain otherwise) | `config/runtime.exs` |

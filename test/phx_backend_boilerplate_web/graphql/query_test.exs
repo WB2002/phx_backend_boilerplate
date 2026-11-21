@@ -117,4 +117,22 @@ defmodule PhxBackendBoilerplateWeb.Graphql.QueryTest do
 
     assert json_response(conn, 413)["errors"]["detail"] =~ "GraphQL request exceeds maximum size"
   end
+
+  test "returns 413 when request path has trailing slash and Content-Length exceeds cap", %{
+    conn: conn
+  } do
+    max_query = PhxBackendBoilerplateWeb.Graphql.Config.max_query_bytes()
+    over = max_query + 4_096 + 1
+    body = Jason.encode!(%{"query" => "{ ping }"})
+
+    conn =
+      conn
+      |> recycle()
+      |> Map.put(:remote_ip, unique_ip())
+      |> put_req_header("content-type", "application/json")
+      |> put_req_header("content-length", Integer.to_string(over))
+      |> post("/api/graphql/", body)
+
+    assert json_response(conn, 413)["errors"]["detail"] =~ "GraphQL request exceeds maximum size"
+  end
 end

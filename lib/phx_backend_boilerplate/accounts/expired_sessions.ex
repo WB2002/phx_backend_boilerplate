@@ -10,12 +10,17 @@ defmodule PhxBackendBoilerplate.Accounts.ExpiredSessions do
   deny-list writes are best-effort. When Redis has no deny entry (`{:ok, nil}`),
   the session is treated as active — access JWT expiry is the other revocation
   boundary.
+
+  On Redis read errors, falls back to Postgres: missing session rows are treated
+  as revoked (fail-closed for logged-out sessions).
   """
 
   require Logger
 
   alias PhxBackendBoilerplate.Accounts.Config
+  alias PhxBackendBoilerplate.Accounts.Session
   alias PhxBackendBoilerplate.Cache.L2
+  alias PhxBackendBoilerplate.Repo
 
   @prefix "expired_sessions:"
 
@@ -63,7 +68,14 @@ defmodule PhxBackendBoilerplate.Accounts.ExpiredSessions do
           "expired_sessions get failed session_id=#{session_id} reason=#{inspect(reason)}"
         )
 
-        false
+        revoked_via_postgres?(session_id)
+    end
+  end
+
+  defp revoked_via_postgres?(session_id) do
+    case Repo.get(Session, session_id) do
+      %Session{} -> false
+      nil -> true
     end
   end
 

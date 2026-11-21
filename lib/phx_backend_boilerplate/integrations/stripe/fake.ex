@@ -49,8 +49,8 @@ defmodule PhxBackendBoilerplate.Integrations.Stripe.Fake do
           event -> {:ok, event}
         end
 
-      result ->
-        result
+      stubbed_outcome ->
+        stubbed_outcome
     end
   end
 
@@ -90,14 +90,14 @@ defmodule PhxBackendBoilerplate.Integrations.Stripe.Fake do
 
       Fake.stub(:retrieve_subscription, {:error, :timeout})
   """
-  def stub(operation, result) when is_atom(operation) do
+  def stub(operation, outcome) when is_atom(operation) do
     cfg = Application.get_env(:phx_backend_boilerplate, __MODULE__, [])
     results = Keyword.get(cfg, :results, %{})
 
     Application.put_env(
       :phx_backend_boilerplate,
       __MODULE__,
-      Keyword.put(cfg, :results, Map.put(results, operation, result))
+      Keyword.put(cfg, :results, Map.put(results, operation, outcome))
     )
   end
 

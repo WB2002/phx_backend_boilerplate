@@ -1,0 +1,15 @@
+rules:
+  - id: elixir-banned-variable-binding
+    languages: [elixir]
+    severity: ERROR
+    message: "Generic or placeholder identifier '$VAR' rejected. Use a domain-specific descriptive name."
+    patterns:
+      - pattern-either:
+          - pattern: "$VAR = $EXPR"
+          - pattern: "def $F(..., $VAR, ...), do: ..."
+          - pattern: "defp $F(..., $VAR, ...), do: ..."
+          - pattern: "fn $VAR -> ..."
+          - pattern: "fn ..., $VAR -> ..."
+      - metavariable-regex:
+          metavariable: $VAR
+          regex: ^(data|result|item|temp|tmp|obj|val|foo|bar|baz|qux|thing|stuff|dummy|test_var|my_var|my_func|do_something|handle_stuff|process_data|dummy_func|var[0-9]+)$

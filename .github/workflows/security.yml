@@ -150,9 +150,10 @@ jobs:
         run: |
           docker run --rm \
             -v "${{ github.workspace }}:/src" \
-            semgrep/semgrep:1.151.0 \
+            semgrep/semgrep:1.151.0@sha256:5930c9438968657745cc8c193e338ec9e08c5ead0b926b1b4ed37e06a9cc2270 \
             semgrep scan \
             --config auto \
+            --config /src/scripts/ci/semgrep-guardrails.yaml \
             --sarif \
             --output /src/semgrep.sarif \
             --error \
@@ -223,7 +224,7 @@ jobs:
         run: ./scripts/docker-verify.sh phx_backend_boilerplate:verify
 
       - name: Scan Image for Vulnerabilities (Trivy)
-        uses: aquasecurity/trivy-action@18f2510ee396bbf400402947b394f2dd8c87dbb0 # 0.29.0
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           scan-type: image
           image-ref: phx_backend_boilerplate:verify
@@ -231,6 +232,7 @@ jobs:
           output: trivy-image-results.sarif
           severity: ${{ inputs.fail_on_severity || 'HIGH,CRITICAL' }}
           trivyignores: .trivyignore
+          exit-code: "1"
 
       - name: Upload Trivy Image SARIF Artifact
         if: always() && hashFiles('trivy-image-results.sarif') != ''

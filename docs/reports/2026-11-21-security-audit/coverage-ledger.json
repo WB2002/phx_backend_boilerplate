@@ -1,0 +1,297 @@
+{
+  "scope": "repo",
+  "audit_date": "2026-11-21",
+  "units": [
+    {
+      "unit_id": "UNIT-001",
+      "name": "HTTP Endpoint, CORS, Parsers & Security Headers",
+      "surface": "api-route",
+      "files": [
+        "lib/phx_backend_boilerplate_web/endpoint.ex",
+        "lib/phx_backend_boilerplate_web/router.ex",
+        "lib/phx_backend_boilerplate_web/plugs/security_headers.ex",
+        "lib/phx_backend_boilerplate_web/plugs/parsers.ex",
+        "lib/phx_backend_boilerplate_web/plugs/cache_body_reader.ex",
+        "lib/phx_backend_boilerplate_web/client_ip.ex",
+        "lib/phx_backend_boilerplate_web/params.ex",
+        "lib/phx_backend_boilerplate_web/controllers/error_json.ex",
+        "lib/phx_backend_boilerplate_web/controllers/fallback_controller.ex",
+        "lib/phx_backend_boilerplate_web/controllers/changeset_json.ex"
+      ],
+      "trust_boundary": "public-to-app",
+      "status": "audited",
+      "checks_performed": ["SEC-AUTH", "SEC-AUTHZ", "SEC-INJ", "SEC-EGRESS", "SEC-SHARP", "SEC-OPS"]
+    },
+    {
+      "unit_id": "UNIT-002",
+      "name": "Authentication, Sessions, JWT Tokens & Auth Cookies",
+      "surface": "auth-boundary",
+      "files": [
+        "lib/phx_backend_boilerplate/accounts.ex",
+        "lib/phx_backend_boilerplate/accounts/config.ex",
+        "lib/phx_backend_boilerplate/accounts/expired_sessions.ex",
+        "lib/phx_backend_boilerplate/accounts/session.ex",
+        "lib/phx_backend_boilerplate/accounts/tokens.ex",
+        "lib/phx_backend_boilerplate/accounts/user.ex",
+        "lib/phx_backend_boilerplate_web/auth_cookies.ex",
+        "lib/phx_backend_boilerplate_web/plugs/authenticate.ex",
+        "lib/phx_backend_boilerplate_web/controllers/auth_controller.ex",
+        "lib/phx_backend_boilerplate/workers/purge_expired_sessions_job.ex"
+      ],
+      "trust_boundary": "public-to-app",
+      "status": "audited",
+      "checks_performed": ["SEC-AUTH", "SEC-AUTHZ", "SEC-INJ", "SEC-EGRESS", "SEC-SHARP", "SEC-OPS"]
+    },
+    {
+      "unit_id": "UNIT-003",
+      "name": "Demo Session, Guest ID, reCAPTCHA & Public Demo Endpoints",
+      "surface": "api-route",
+      "files": [
+        "lib/phx_backend_boilerplate_web/plugs/ensure_guest_id.ex",
+        "lib/phx_backend_boilerplate_web/plugs/recaptcha.ex",
+        "lib/phx_backend_boilerplate/recaptcha.ex",
+        "lib/phx_backend_boilerplate/recaptcha/google.ex",
+        "lib/phx_backend_boilerplate/recaptcha/fake.ex",
+        "lib/phx_backend_boilerplate_web/controllers/demo/session_controller.ex",
+        "lib/phx_backend_boilerplate_web/controllers/demo/public_controller.ex",
+        "lib/phx_backend_boilerplate_web/controllers/demo/comment_controller.ex",
+        "lib/phx_backend_boilerplate_web/controllers/demo/comment_dto.ex",
+        "lib/phx_backend_boilerplate/sanitize.ex"
+      ],
+      "trust_boundary": "public-to-app",
+      "status": "audited",
+      "checks_performed": ["SEC-AUTH", "SEC-AUTHZ", "SEC-INJ", "SEC-EGRESS", "SEC-SHARP", "SEC-OPS"]
+    },
+    {
+      "unit_id": "UNIT-004",
+      "name": "Rate Limiting, Load Shedding & Request Deadlines",
+      "surface": "api-route",
+      "files": [
+        "lib/phx_backend_boilerplate/rate_limit.ex",
+        "lib/phx_backend_boilerplate_web/plugs/rate_limit.ex",
+        "lib/phx_backend_boilerplate/load_shed.ex",
+        "lib/phx_backend_boilerplate_web/plugs/load_shed.ex",
+        "lib/phx_backend_boilerplate/deadline.ex",
+        "lib/phx_backend_boilerplate_web/plugs/deadline.ex",
+        "lib/phx_backend_boilerplate/request_context.ex",
+        "lib/phx_backend_boilerplate_web/plugs/request_context.ex"
+      ],
+      "trust_boundary": "public-to-app",
+      "status": "audited",
+      "checks_performed": ["SEC-AUTH", "SEC-AUTHZ", "SEC-INJ", "SEC-EGRESS", "SEC-SHARP", "SEC-OPS"]
+    },
+    {
+      "unit_id": "UNIT-005",
+      "name": "GraphQL API, Limits, Pipeline & Subscriptions",
+      "surface": "api-route",
+      "files": [
+        "lib/phx_backend_boilerplate_web/graphql/schema.ex",
+        "lib/phx_backend_boilerplate_web/graphql/schema/demo_types.ex",
+        "lib/phx_backend_boilerplate_web/graphql/resolvers/demo.ex",
+        "lib/phx_backend_boilerplate_web/graphql/middleware/require_auth.ex",
+        "lib/phx_backend_boilerplate_web/graphql/pipeline.ex",
+        "lib/phx_backend_boilerplate_web/graphql/complexity.ex",
+        "lib/phx_backend_boilerplate_web/graphql/config.ex",
+        "lib/phx_backend_boilerplate_web/graphql/phase/document_byte_limit.ex",
+        "lib/phx_backend_boilerplate_web/graphql/phase/max_depth.ex",
+        "lib/phx_backend_boilerplate_web/graphql/subscription_budget.ex",
+        "lib/phx_backend_boilerplate_web/plugs/graphql_body_limit.ex",
+        "lib/phx_backend_boilerplate_web/plugs/graphql_context.ex",
+        "lib/phx_backend_boilerplate_web/plugs/graphql_query_limit.ex"
+      ],
+      "trust_boundary": "public-to-app",
+      "status": "audited",
+      "checks_performed": ["SEC-AUTH", "SEC-AUTHZ", "SEC-INJ", "SEC-EGRESS", "SEC-SHARP", "SEC-OPS"]
+    },
+    {
+      "unit_id": "UNIT-006",
+      "name": "WebSockets & Phoenix Channels",
+      "surface": "auth-boundary",
+      "files": [
+        "lib/phx_backend_boilerplate_web/user_socket.ex",
+        "lib/phx_backend_boilerplate_web/graphql_socket.ex",
+        "lib/phx_backend_boilerplate_web/socket_auth.ex",
+        "lib/phx_backend_boilerplate_web/socket_limits.ex",
+        "lib/phx_backend_boilerplate_web/channels/demo_channel.ex"
+      ],
+      "trust_boundary": "public-to-app",
+      "status": "audited",
+      "checks_performed": ["SEC-AUTH", "SEC-AUTHZ", "SEC-INJ", "SEC-EGRESS", "SEC-SHARP", "SEC-OPS"]
+    },
+    {
+      "unit_id": "UNIT-007",
+      "name": "Billing, Stripe Checkout & Webhooks",
+      "surface": "api-route",
+      "files": [
+        "lib/phx_backend_boilerplate/billing.ex",
+        "lib/phx_backend_boilerplate/billing/purchase.ex",
+        "lib/phx_backend_boilerplate/billing/stripe_event.ex",
+        "lib/phx_backend_boilerplate/billing/subscription.ex",
+        "lib/phx_backend_boilerplate_web/controllers/billing_controller.ex",
+        "lib/phx_backend_boilerplate_web/controllers/billing/checkout_session_dto.ex",
+        "lib/phx_backend_boilerplate_web/controllers/webhooks/stripe_controller.ex",
+        "lib/phx_backend_boilerplate/workers/stripe_webhook_job.ex",
+        "lib/phx_backend_boilerplate/integrations/stripe.ex",
+        "lib/phx_backend_boilerplate/integrations/stripe/api.ex",
+        "lib/phx_backend_boilerplate/integrations/stripe/fake.ex",
+        "lib/phx_backend_boilerplate/integrations/stripe/signature.ex"
+      ],
+      "trust_boundary": "app-to-external-api",
+      "status": "audited",
+      "checks_performed": ["SEC-AUTH", "SEC-AUTHZ", "SEC-INJ", "SEC-EGRESS", "SEC-SHARP", "SEC-OPS"]
+    },
+    {
+      "unit_id": "UNIT-008",
+      "name": "File Uploads, ClamAV Malware Scanning, Storage & Downloads",
+      "surface": "data-access",
+      "files": [
+        "lib/phx_backend_boilerplate/files.ex",
+        "lib/phx_backend_boilerplate/files/checksum.ex",
+        "lib/phx_backend_boilerplate/files/scanner.ex",
+        "lib/phx_backend_boilerplate/files/scanner/clamav.ex",
+        "lib/phx_backend_boilerplate/files/scanner/always_clean.ex",
+        "lib/phx_backend_boilerplate/files/storage.ex",
+        "lib/phx_backend_boilerplate/files/storage/local.ex",
+        "lib/phx_backend_boilerplate/files/storage/s3.ex",
+        "lib/phx_backend_boilerplate/files/stored_file.ex",
+        "lib/phx_backend_boilerplate/files/validator.ex",
+        "lib/phx_backend_boilerplate_web/controllers/demo/files_controller.ex"
+      ],
+      "trust_boundary": "public-to-app",
+      "status": "audited",
+      "checks_performed": ["SEC-AUTH", "SEC-AUTHZ", "SEC-INJ", "SEC-EGRESS", "SEC-SHARP", "SEC-OPS"]
+    },
+    {
+      "unit_id": "UNIT-009",
+      "name": "Cryptography, KMS & Envelope Encryption",
+      "surface": "data-access",
+      "files": [
+        "lib/phx_backend_boilerplate/crypto.ex",
+        "lib/phx_backend_boilerplate/crypto/digest.ex",
+        "lib/phx_backend_boilerplate/crypto/envelope.ex",
+        "lib/phx_backend_boilerplate/crypto/kms.ex",
+        "lib/phx_backend_boilerplate/crypto/kms/ex_aws.ex",
+        "lib/phx_backend_boilerplate/crypto/kms/memory.ex"
+      ],
+      "trust_boundary": "app-to-external-api",
+      "status": "audited",
+      "checks_performed": ["SEC-AUTH", "SEC-AUTHZ", "SEC-INJ", "SEC-EGRESS", "SEC-SHARP", "SEC-OPS"]
+    },
+    {
+      "unit_id": "UNIT-010",
+      "name": "Outbound HTTP, AWS Client & Third-Party Integrations",
+      "surface": "egress-ai",
+      "files": [
+        "lib/phx_backend_boilerplate/http.ex",
+        "lib/phx_backend_boilerplate/aws/http_client.ex",
+        "lib/phx_backend_boilerplate/integrations.ex",
+        "lib/phx_backend_boilerplate/integrations/example.ex",
+        "lib/phx_backend_boilerplate/integrations/slack.ex",
+        "lib/phx_backend_boilerplate/integrations/slack/web_api.ex",
+        "lib/phx_backend_boilerplate/integrations/slack/fake.ex",
+        "lib/phx_backend_boilerplate/mailer.ex"
+      ],
+      "trust_boundary": "app-to-external-api",
+      "status": "audited",
+      "checks_performed": ["SEC-AUTH", "SEC-AUTHZ", "SEC-INJ", "SEC-EGRESS", "SEC-SHARP", "SEC-OPS"]
+    },
+    {
+      "unit_id": "UNIT-011",
+      "name": "Multi-Level Cache, SWR, Coalescer & Demo Expensive/Cached/Streaming",
+      "surface": "data-access",
+      "files": [
+        "lib/phx_backend_boilerplate/cache.ex",
+        "lib/phx_backend_boilerplate/cache/coalescer.ex",
+        "lib/phx_backend_boilerplate/cache/entry.ex",
+        "lib/phx_backend_boilerplate/cache/l1.ex",
+        "lib/phx_backend_boilerplate/cache/l2.ex",
+        "lib/phx_backend_boilerplate/cache/stampede.ex",
+        "lib/phx_backend_boilerplate/swr.ex",
+        "lib/phx_backend_boilerplate_web/controllers/demo/cached_controller.ex",
+        "lib/phx_backend_boilerplate_web/controllers/demo/expensive_controller.ex",
+        "lib/phx_backend_boilerplate_web/controllers/demo/stream_controller.ex"
+      ],
+      "trust_boundary": "app-to-db",
+      "status": "audited",
+      "checks_performed": ["SEC-AUTH", "SEC-AUTHZ", "SEC-INJ", "SEC-EGRESS", "SEC-SHARP", "SEC-OPS"]
+    },
+    {
+      "unit_id": "UNIT-012",
+      "name": "Feature Flags, Background Jobs, Audit Logging, Seeds & Health",
+      "surface": "worker",
+      "files": [
+        "lib/phx_backend_boilerplate/flags.ex",
+        "lib/phx_backend_boilerplate/flags/guest.ex",
+        "lib/phx_backend_boilerplate_web/controllers/demo/flags_controller.ex",
+        "lib/phx_backend_boilerplate/jobs.ex",
+        "lib/phx_backend_boilerplate/workers/demo_job.ex",
+        "lib/phx_backend_boilerplate_web/controllers/demo/jobs_controller.ex",
+        "lib/phx_backend_boilerplate/audit.ex",
+        "lib/phx_backend_boilerplate/audit/log.ex",
+        "lib/phx_backend_boilerplate/health.ex",
+        "lib/phx_backend_boilerplate_web/controllers/health_controller.ex",
+        "lib/phx_backend_boilerplate/seeds.ex",
+        "lib/phx_backend_boilerplate/seeds/demo_preview_flag.ex",
+        "lib/phx_backend_boilerplate/seeds/example.ex",
+        "lib/phx_backend_boilerplate/seeds/record.ex",
+        "lib/phx_backend_boilerplate/seeds/seeder.ex",
+        "lib/mix/tasks/seed.ex",
+        "lib/phx_backend_boilerplate/release.ex",
+        "priv/repo/seeds.exs"
+      ],
+      "trust_boundary": "app-to-db",
+      "status": "audited",
+      "checks_performed": ["SEC-AUTH", "SEC-AUTHZ", "SEC-INJ", "SEC-EGRESS", "SEC-SHARP", "SEC-OPS"]
+    },
+    {
+      "unit_id": "UNIT-013",
+      "name": "Observability, Logging Redaction & Telemetry",
+      "surface": "egress-ai",
+      "files": [
+        "lib/phx_backend_boilerplate/observability.ex",
+        "lib/phx_backend_boilerplate/observability/cloudwatch_log_handler.ex",
+        "lib/phx_backend_boilerplate/observability/cloudwatch_logs_client.ex",
+        "lib/phx_backend_boilerplate/observability/cloudwatch_logs_client/ex_aws.ex",
+        "lib/phx_backend_boilerplate/logging/redaction.ex",
+        "lib/phx_backend_boilerplate_web/telemetry.ex",
+        "lib/mix/tasks/observability.setup.ex",
+        "config/redaction_keys.exs",
+        "config/otel-collector-config.yaml"
+      ],
+      "trust_boundary": "app-to-external-api",
+      "status": "audited",
+      "checks_performed": ["SEC-AUTH", "SEC-AUTHZ", "SEC-INJ", "SEC-EGRESS", "SEC-SHARP", "SEC-OPS"]
+    },
+    {
+      "unit_id": "UNIT-014",
+      "name": "Configuration, Secrets, Containerization, Releases & CI/CD",
+      "surface": "infra-ci",
+      "files": [
+        "config/config.exs",
+        "config/dev.exs",
+        "config/prod.exs",
+        "config/runtime.exs",
+        "config/test.exs",
+        "mix.exs",
+        "Dockerfile",
+        ".dockerignore",
+        "docker-compose.yml",
+        "rel/env.sh.eex",
+        ".github/workflows/ci.yml",
+        ".github/workflows/security.yml",
+        ".github/workflows/agent-evals.yml",
+        ".github/dependabot.yml",
+        ".gitleaks.toml",
+        ".trivyignore",
+        ".semgrepignore",
+        ".env.example",
+        "lib/mix/tasks/gitleaks.ex",
+        "scripts/docker-verify.sh",
+        "scripts/verify.sh"
+      ],
+      "trust_boundary": "public-to-app",
+      "status": "audited",
+      "checks_performed": ["SEC-AUTH", "SEC-AUTHZ", "SEC-INJ", "SEC-EGRESS", "SEC-SHARP", "SEC-OPS"]
+    }
+  ]
+}

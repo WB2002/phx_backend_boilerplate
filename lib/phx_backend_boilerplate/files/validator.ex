@@ -125,9 +125,9 @@ defmodule PhxBackendBoilerplate.Files.Validator do
 
   defp read_prefix(path, n) do
     with {:ok, file} <- File.open(path, [:read, :raw, :binary]),
-         {:ok, data} <- :file.pread(file, 0, n) do
+         {:ok, prefix_bytes} <- :file.pread(file, 0, n) do
       File.close(file)
-      {:ok, data}
+      {:ok, prefix_bytes}
     else
       :eof ->
         {:error, :eof}

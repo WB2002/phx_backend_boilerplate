@@ -18,8 +18,8 @@ defmodule PhxBackendBoilerplate.Workers.StripeWebhookJob do
   @impl Oban.Worker
   def perform(%Oban.Job{args: %{"stripe_event_id" => event_id}}) when is_binary(event_id) do
     with {:ok, event} <- Stripe.retrieve_event(event_id),
-         result <- Billing.handle_event(event) do
-      case result do
+         handling_outcome <- Billing.handle_event(event) do
+      case handling_outcome do
         :ok -> :ok
         {:ok, :duplicate} -> :ok
         {:error, reason} -> {:error, reason}

@@ -53,8 +53,8 @@ defmodule PhxBackendBoilerplate.Files.Scanner.ClamAV do
   defp stream_chunks(socket, path, chunk) do
     path
     |> File.stream!(chunk, [])
-    |> Enum.reduce_while(:ok, fn data, :ok ->
-      frame = <<byte_size(data)::32, data::binary>>
+    |> Enum.reduce_while(:ok, fn bytes_chunk, :ok ->
+      frame = <<byte_size(bytes_chunk)::32, bytes_chunk::binary>>
 
       case :gen_tcp.send(socket, frame) do
         :ok -> {:cont, :ok}
@@ -67,7 +67,7 @@ defmodule PhxBackendBoilerplate.Files.Scanner.ClamAV do
 
   defp recv_response(socket) do
     case :gen_tcp.recv(socket, 0, @recv_timeout) do
-      {:ok, data} -> {:ok, data}
+      {:ok, response_bytes} -> {:ok, response_bytes}
       {:error, reason} -> {:error, reason}
     end
   end
