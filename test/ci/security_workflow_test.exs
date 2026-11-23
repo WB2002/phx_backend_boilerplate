@@ -19,4 +19,33 @@ defmodule PhxBackendBoilerplate.CI.SecurityWorkflowTest do
     assert secret_scan_section =~ ~r/fetch-depth:\s*0\b/
     refute secret_scan_section =~ "|| 2"
   end
+
+  test "container-image Trivy gate uses table format so severity filter is not ignored by sarif mode" do
+    content = File.read!(@security_workflow_path)
+
+    [container_image_section] =
+      Regex.run(~r/container-image:.*?(?=\n  [a-z0-9_-]+:|\z)/s, content)
+
+    # trivy-action ignores `severity:` when `format: sarif`, causing exit-code: "1"
+    # to fail on LOW/MEDIUM OS CVEs. The failing gate must use table format, and
+    # SARIF generation must be a separate non-failing (exit-code: "0") step.
+    trivy_steps =
+      container_image_section
+      |> String.split(~r/\n\s+- name:/)
+      |> Enum.filter(&(&1 =~ "aquasecurity/trivy-action"))
+
+    assert Enum.any?(trivy_steps, fn step ->
+             step =~ ~r/format:\s*["']?table["']?/ and step =~ ~r/exit-code:\s*["']?1["']?/
+           end)
+
+    assert Enum.any?(trivy_steps, fn step ->
+             step =~ ~r/format:\s*["']?sarif["']?/ and
+               step =~ ~r/output:\s*["']?trivy-image-results\.sarif["']?/ and
+               step =~ ~r/exit-code:\s*["']?0["']?/
+           end)
+
+    refute Enum.any?(trivy_steps, fn step ->
+             step =~ ~r/format:\s*["']?sarif["']?/ and step =~ ~r/exit-code:\s*["']?1["']?/
+           end)
+  end
 end

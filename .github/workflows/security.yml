@@ -223,16 +223,27 @@ jobs:
       - name: Run Security Verification Suite
         run: ./scripts/docker-verify.sh phx_backend_boilerplate:verify
 
-      - name: Scan Image for Vulnerabilities (Trivy)
+      - name: Scan Image for Vulnerabilities (Console)
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           scan-type: image
           image-ref: phx_backend_boilerplate:verify
-          format: sarif
-          output: trivy-image-results.sarif
+          format: "table"
           severity: ${{ inputs.fail_on_severity || 'HIGH,CRITICAL' }}
-          trivyignores: .trivyignore
+          trivyignores: ".trivyignore"
           exit-code: "1"
+
+      - name: Generate Trivy Image SARIF Report
+        if: always()
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: image
+          image-ref: phx_backend_boilerplate:verify
+          format: "sarif"
+          output: "trivy-image-results.sarif"
+          severity: ${{ inputs.fail_on_severity || 'HIGH,CRITICAL' }}
+          trivyignores: ".trivyignore"
+          exit-code: "0"
 
       - name: Upload Trivy Image SARIF Artifact
         if: always() && hashFiles('trivy-image-results.sarif') != ''
