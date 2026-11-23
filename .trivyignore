@@ -35,3 +35,122 @@ CVE-2026-76642
 # Tracking: Pending Debian 13 (trixie) perl security update
 # Review-By: 2027-03-31
 CVE-2026-9538
+
+# CVE: CVE-2026-78408
+# Library: util-linux / bsdutils / libblkid1 / liblastlog2-2 / libmount1 / libsmartcols1 / libuuid1 / login / mount (2.41.5-0+deb13u1)
+# Severity: HIGH
+# Title: util-linux: nsenter --join-cgroup leaks root cgroup migration authority
+# Status: Triaged / Accepted Risk (Unfixed Upstream)
+# Rationale: No upstream Debian 13 (Trixie) fix available (status: affected).
+#            Runtime container runs as unprivileged 10001:10001 with all setuid/setgid
+#            bits stripped and does not invoke nsenter or perform cgroup migrations.
+# Tracking: Pending Debian 13 (trixie) util-linux security update
+# Review-By: 2027-03-31
+CVE-2026-78408
+
+# CVE: CVE-2026-78409
+# Library: util-linux / bsdutils / libblkid1 / liblastlog2-2 / libmount1 / libsmartcols1 / libuuid1 / login / mount (2.41.5-0+deb13u1)
+# Severity: HIGH
+# Title: util-linux: X-mount.subdir detached-tree resolution can escape via intermediate symlinks
+# Status: Triaged / Accepted Risk (Unfixed Upstream)
+# Rationale: No upstream Debian 13 (Trixie) fix available (status: affected).
+#            Runtime container runs as unprivileged 10001:10001 with all setuid/setgid
+#            bits stripped and does not perform mount operations.
+# Tracking: Pending Debian 13 (trixie) util-linux security update
+# Review-By: 2027-03-31
+CVE-2026-78409
+
+# CVE: CVE-2026-78410
+# Library: util-linux / bsdutils / libblkid1 / liblastlog2-2 / libmount1 / libsmartcols1 / libuuid1 / login / mount (2.41.5-0+deb13u1)
+# Severity: HIGH
+# Title: util-linux: restricted bind mounts do not pin the source, allowing X-mount.owner/group/mode
+# Status: Triaged / Accepted Risk (Unfixed Upstream)
+# Rationale: No upstream Debian 13 (Trixie) fix available (status: affected).
+#            Runtime container runs as unprivileged 10001:10001 with all setuid/setgid
+#            bits stripped and does not perform mount operations.
+# Tracking: Pending Debian 13 (trixie) util-linux security update
+# Review-By: 2027-03-31
+CVE-2026-78410
+
+# CVE: CVE-2026-54369
+# Library: libacl1 (2.3.2-2+b1)
+# Severity: HIGH
+# Title: acl: Symlink traversal privilege escalation via libacl functions
+# Status: Triaged / Accepted Risk (Unfixed Upstream)
+# Rationale: No upstream Debian 13 (Trixie) fix available (status: affected).
+#            Runtime container runs as unprivileged 10001:10001 with a read-only /app
+#            release directory and does not perform untrusted filesystem ACL operations.
+# Tracking: Pending Debian 13 (trixie) acl security update
+# Review-By: 2027-03-31
+CVE-2026-54369
+
+# CVE: CVE-2025-69720
+# Library: ncurses (libncurses6 / libtinfo6 / ncurses-base / ncurses-bin 6.5+20250216-2)
+# Severity: HIGH
+# Title: ncurses: Buffer overflow vulnerability may lead to arbitrary code execution
+# Status: Triaged / Accepted Risk (Unfixed Upstream)
+# Rationale: No upstream Debian 13 (Trixie) fix available (status: affected).
+#            libncurses6 is present as a shared library dependency for the OTP runtime;
+#            the headless Phoenix server does not process untrusted terminfo/curses input.
+# Tracking: Pending Debian 13 (trixie) ncurses security update
+# Review-By: 2027-03-31
+CVE-2025-69720
+
+# CVE: CVE-2026-119373
+# Library: libsqlite3-0 (3.46.1-7+deb13u2)
+# Severity: HIGH
+# Title: sqlite: Denial of service via heap-based buffer overflow in FTS5
+# Status: Triaged / Accepted Risk (Unfixed Upstream)
+# Rationale: No upstream Debian 13 (Trixie) fix available (status: affected).
+#            Pulled in as an OS transitive dependency; the application uses PostgreSQL
+#            via Ecto and does not use SQLite or FTS5.
+# Tracking: Pending Debian 13 (trixie) sqlite3 security update
+# Review-By: 2027-03-31
+CVE-2026-119373
+
+# CVE: CVE-2026-119374
+# Library: libsqlite3-0 (3.46.1-7+deb13u2)
+# Severity: HIGH
+# Title: sqlite: Arbitrary code execution via corrupted FTS5 index
+# Status: Triaged / Accepted Risk (Unfixed Upstream)
+# Rationale: No upstream Debian 13 (Trixie) fix available (status: affected).
+#            Pulled in as an OS transitive dependency; the application uses PostgreSQL
+#            via Ecto and does not use SQLite or FTS5.
+# Tracking: Pending Debian 13 (trixie) sqlite3 security update
+# Review-By: 2027-03-31
+CVE-2026-119374
+
+# CVE: CVE-2026-119379
+# Library: libsqlite3-0 (3.46.1-7+deb13u2)
+# Severity: HIGH
+# Title: sqlite: Arbitrary code execution via crafted session changesets
+# Status: Triaged / Accepted Risk (Unfixed Upstream)
+# Rationale: No upstream Debian 13 (Trixie) fix available (status: affected).
+#            Pulled in as an OS transitive dependency; the application uses PostgreSQL
+#            via Ecto and does not use SQLite or SQLite sessions.
+# Tracking: Pending Debian 13 (trixie) sqlite3 security update
+# Review-By: 2027-03-31
+CVE-2026-119379
+
+# CVE: CVE-2026-124709
+# Library: openssl (libssl3t64 / openssl / openssl-provider-legacy 3.5.9-1~deb13u1)
+# Severity: HIGH
+# Title: openssl: Denial of Service via memory leak in QUIC stream handling
+# Status: Triaged / Accepted Risk (Unfixed Upstream)
+# Rationale: No upstream Debian 13 (Trixie) fix available (status: affected).
+#            The Phoenix/Bandit HTTP server and OTP SSL/crypto stack do not expose
+#            QUIC endpoints or process untrusted QUIC streams.
+# Tracking: Pending Debian 13 (trixie) openssl security update
+# Review-By: 2027-03-31
+CVE-2026-124709
+
+# CVE: CVE-2026-16742
+# Library: systemd (libsystemd0 / libudev1 257.13-1~deb13u1)
+# Severity: HIGH
+# Title: systemd: systemd-homed: Local privilege escalation via missing home-record signature verification
+# Status: Triaged / Accepted Risk (Unfixed Upstream)
+# Rationale: No upstream Debian 13 (Trixie) fix available (status: affected).
+#            Container runs as unprivileged 10001:10001 without systemd PID 1 or systemd-homed.
+# Tracking: Pending Debian 13 (trixie) systemd security update
+# Review-By: 2027-03-31
+CVE-2026-16742

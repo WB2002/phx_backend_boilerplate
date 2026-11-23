@@ -157,7 +157,7 @@ defmodule PhxBackendBoilerplate.MixProject do
   defp dialyzer do
     [
       plt_file: {:no_warn, "priv/plts/dialyzer.plt"},
-      plt_add_apps: [:mix, :ex_unit, :fun_with_flags, :fun_with_flags_ui],
+      plt_add_apps: [:mix, :ex_unit, :credo, :fun_with_flags, :fun_with_flags_ui],
       ignore_warnings: ".dialyzer_ignore.exs"
     ]
   end

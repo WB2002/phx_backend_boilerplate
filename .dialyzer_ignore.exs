@@ -3,8 +3,5 @@
   # ExAws.CloudWatchLogs.put_log_events/4 declares the log_events argument as binary() in its
   # @spec, but the implementation and AWS API expect a list of event maps.
   {"lib/phx_backend_boilerplate/observability/cloudwatch_logs_client/ex_aws.ex",
-   :callback_arg_type_mismatch},
-
-  # Ecto.Multi is opaque; Dialyzer rejects insert/3 when the multi is built via Multi.new().
-  {"lib/phx_backend_boilerplate/billing.ex", :call_without_opaque}
+   :callback_arg_type_mismatch}
 ]

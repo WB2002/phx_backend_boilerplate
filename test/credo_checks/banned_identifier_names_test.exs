@@ -17,4 +17,9 @@ defmodule CredoChecks.BannedIdentifierNamesTest do
     source = File.read!(Path.expand("../../lib/credo_checks/banned_identifier_names.ex", __DIR__))
     assert source =~ "Code.ensure_loaded?(Credo.Check)"
   end
+
+  test "includes :credo in dialyzer plt_add_apps so Dialyzer resolves Credo modules" do
+    plt_add_apps = Mix.Project.config()[:dialyzer][:plt_add_apps] || []
+    assert :credo in plt_add_apps
+  end
 end
