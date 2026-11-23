@@ -12,3 +12,26 @@
 # Tracking: Pending aws_encryption_sdk release supporting hackney >= 4.0.1
 # Review-By: 2026-12-31
 CVE-2026-47071
+
+# CVE: CVE-2026-76642
+# Library: util-linux / bsdutils (2.41.5-0+deb13u1)
+# Severity: HIGH
+# Title: util-linux: failed external mount helper still...
+# Status: Triaged / Accepted Risk (Unfixed Upstream)
+# Rationale: No upstream Debian 13 (Trixie) fix available (status: affected).
+#            Runtime container runs as unprivileged 10001:10001 with all setuid/setgid
+#            bits stripped and does not perform mount operations.
+# Tracking: Pending Debian 13 (trixie) util-linux security update
+# Review-By: 2027-03-31
+CVE-2026-76642
+
+# CVE: CVE-2026-9538
+# Library: perl-base (5.40.1-6+deb13u1)
+# Severity: HIGH
+# Title: perl-Archive-Tar: Denial of Service via crafted tar header with large entry
+# Status: Triaged / Accepted Risk (Unfixed Upstream)
+# Rationale: No upstream Debian 13 (Trixie) fix available (status: fix_deferred).
+#            Runtime executes an Elixir/OTP release and never invokes perl or Archive::Tar.
+# Tracking: Pending Debian 13 (trixie) perl security update
+# Review-By: 2027-03-31
+CVE-2026-9538

@@ -3,7 +3,7 @@
 # =============================================================================
 # Stage 1: Builder
 # =============================================================================
-FROM elixir:otp-27-slim@sha256:d2ddc781a7754c7909759ec10a75295c3e5f9f93f300b5a9dbf6a306f9cbe3a9 AS builder
+FROM elixir:otp-27-slim@sha256:4b347e1107b4530c1722afbbcd7d908995557ec9188f2fe362c04d407ddcdd63 AS builder
 
 # Install build dependencies for C-NIFs (argon2) and git dependencies
 # hadolint ignore=DL3008
@@ -49,11 +49,12 @@ RUN mix compile && \
 # =============================================================================
 # Stage 2: Minimal Hardened Runtime
 # =============================================================================
-FROM debian:bookworm-slim@sha256:7ff6ba31527b9e336162fa061746c366c4b2032f4d2cff2078bea43f78efe3f8 AS runtime
+FROM debian:trixie-slim@sha256:a72b4433de1cf7d6bae0c4cee74d0547f58601a643b3375f070c51600d63b6b2 AS runtime
 
 # Install minimal shared runtime libraries (no compilers, git, curl, or dev packages)
-# hadolint ignore=DL3008
+# hadolint ignore=DL3005,DL3008
 RUN apt-get update -y && \
+    apt-get upgrade -y --no-install-recommends && \
     apt-get install -y --no-install-recommends libstdc++6 openssl libncurses6 ca-certificates && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
