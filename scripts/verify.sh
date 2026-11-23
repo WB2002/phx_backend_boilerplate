@@ -3,14 +3,6 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
-export TOOLCHAIN_ROOT="$ROOT"
-
-cleanup_verify() {
-  if [ -n "${TOOLCHAIN_DOCKER_WORKDIR:-}" ]; then
-    rm -rf "${TOOLCHAIN_DOCKER_WORKDIR}"
-  fi
-}
-trap cleanup_verify EXIT
 
 # shellcheck source=lib/toolchain.sh
 . "$ROOT/scripts/lib/toolchain.sh"

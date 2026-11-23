@@ -73,22 +73,18 @@ defmodule PhxBackendBoilerplate.Accounts do
   @spec refresh(String.t()) ::
           {:ok, auth_bundle()} | {:error, :invalid_token | :session_expired | :session_not_found}
   def refresh(refresh_token) when is_binary(refresh_token) do
-    with {:ok, claims} <- Tokens.verify_refresh(refresh_token),
-         {:ok, bundle} <- refresh_in_transaction(claims) do
-      {:ok, bundle}
-    else
-      {:error, :not_found} ->
-        {:error, :session_not_found}
+    case Tokens.verify_refresh(refresh_token) do
+      {:ok, claims} ->
+        case refresh_in_transaction(claims) do
+          {:ok, bundle} -> {:ok, bundle}
+          {:error, :not_found} -> {:error, :session_not_found}
+          {:error, :expired} -> {:error, :session_expired}
+          {:error, :refresh_token_reused} -> {:error, :session_not_found}
+          {:error, reason} -> {:error, reason}
+        end
 
-      {:error, :expired} ->
-        {:error, :session_expired}
-
-      {:error, :refresh_token_reused} ->
-        logout(claims["jti"])
-        {:error, :session_not_found}
-
-      {:error, reason} ->
-        {:error, reason}
+      {:error, _} ->
+        {:error, :invalid_token}
     end
   end
 
@@ -195,7 +191,7 @@ defmodule PhxBackendBoilerplate.Accounts do
               disconnect_graphql_socket(locked.user_id, session_id)
               Repo.delete_all(from s in Session, where: s.id == ^session_id)
               ExpiredSessions.revoke(session_id)
-              Repo.rollback(:refresh_token_reused)
+              {:error, :refresh_token_reused}
 
             true ->
               case rotate_refresh_token(locked) do
@@ -210,6 +206,7 @@ defmodule PhxBackendBoilerplate.Accounts do
       end
     end)
     |> case do
+      {:ok, {:error, reason}} -> {:error, reason}
       {:ok, bundle} -> {:ok, bundle}
       {:error, reason} -> {:error, reason}
     end
