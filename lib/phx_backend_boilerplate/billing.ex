@@ -315,6 +315,7 @@ defmodule PhxBackendBoilerplate.Billing do
       "paid" -> "completed"
       "no_payment_required" -> "completed"
       "unpaid" -> "pending"
+      nil -> "completed"
       _ -> nil
     end
   end

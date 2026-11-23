@@ -77,10 +77,18 @@ defmodule PhxBackendBoilerplate.Accounts do
          {:ok, bundle} <- refresh_in_transaction(claims) do
       {:ok, bundle}
     else
-      {:error, :not_found} -> {:error, :session_not_found}
-      {:error, :expired} -> {:error, :session_expired}
-      {:error, :refresh_token_reused} -> {:error, :session_not_found}
-      {:error, reason} -> {:error, reason}
+      {:error, :not_found} ->
+        {:error, :session_not_found}
+
+      {:error, :expired} ->
+        {:error, :session_expired}
+
+      {:error, :refresh_token_reused} ->
+        logout(claims["jti"])
+        {:error, :session_not_found}
+
+      {:error, reason} ->
+        {:error, reason}
     end
   end
 
