@@ -12,4 +12,9 @@ defmodule CredoChecks.BannedIdentifierNamesTest do
     assert Enum.any?(messages, &(&1 =~ "result"))
     assert Enum.any?(messages, &(&1 =~ "foo"))
   end
+
+  test "guards Credo.Check usage so prod builds without credo dependency compile" do
+    source = File.read!(Path.expand("../../lib/credo_checks/banned_identifier_names.ex", __DIR__))
+    assert source =~ "Code.ensure_loaded?(Credo.Check)"
+  end
 end
