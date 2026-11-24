@@ -69,10 +69,9 @@ jobs:
         uses: actions/cache@d4323d4df104b026a6aa633fdb11d772146be0bf # v4.2.2
         with:
           path: priv/plts
-          key: ${{ runner.os }}-dialyzer-plt-${{ hashFiles('**/mix.lock') }}-${{ hashFiles('**/*.ex') }}
+          key: ${{ runner.os }}-dialyzer-plt-v2-otp27-ex1.20-${{ hashFiles('**/mix.lock') }}
           restore-keys: |
-            ${{ runner.os }}-dialyzer-plt-${{ hashFiles('**/mix.lock') }}-
-            ${{ runner.os }}-dialyzer-plt-
+            ${{ runner.os }}-dialyzer-plt-v2-otp27-ex1.20-
 
       - name: Install dependencies
         run: mix deps.get
