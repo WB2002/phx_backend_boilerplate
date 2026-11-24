@@ -154,3 +154,15 @@ CVE-2026-124709
 # Tracking: Pending Debian 13 (trixie) systemd security update
 # Review-By: 2027-03-31
 CVE-2026-16742
+
+# CVE: CVE-2026-107494
+# Library: openssl (libssl3t64 / openssl / openssl-provider-legacy 3.5.9-1~deb13u1)
+# Severity: HIGH
+# Title: openssl: Denial of Service via unbounded QUIC frame queueing
+# Status: Triaged / Accepted Risk (Unfixed Upstream)
+# Rationale: No upstream Debian 13 (Trixie) fix available (status: affected).
+#            The Phoenix/Bandit HTTP server and OTP SSL/crypto stack do not expose
+#            QUIC endpoints or process untrusted QUIC streams.
+# Tracking: Pending Debian 13 (trixie) openssl security update
+# Review-By: 2027-03-31
+CVE-2026-107494
