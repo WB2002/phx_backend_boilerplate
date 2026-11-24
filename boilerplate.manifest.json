@@ -1,0 +1,37 @@
+{
+  "name": "phx-backend-boilerplate",
+  "language": "elixir",
+  "capabilities": {
+    "health": {
+      "method": "GET",
+      "path": "/health"
+    },
+    "auth": {
+      "register": {
+        "method": "POST",
+        "path": "/api/auth/register",
+        "emailField": "email",
+        "passwordField": "password"
+      },
+      "login": {
+        "method": "POST",
+        "path": "/api/auth/login",
+        "emailField": "email",
+        "passwordField": "password",
+        "tokenPath": "data.access_token"
+      },
+      "me": {
+        "method": "GET",
+        "path": "/api/auth/me"
+      },
+      "refresh": {
+        "method": "POST",
+        "path": "/api/auth/refresh"
+      }
+    },
+    "websockets": {
+      "enabled": true,
+      "path": "/graphql/websocket"
+    }
+  }
+}

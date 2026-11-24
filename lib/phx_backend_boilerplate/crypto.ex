@@ -13,7 +13,7 @@ defmodule PhxBackendBoilerplate.Crypto do
   `decrypt` / `seal` / `open`).
   """
 
-  alias PhxBackendBoilerplate.Crypto.{Digest, Envelope, KMS}
+  alias PhxBackendBoilerplate.Crypto.{Config, Digest, Envelope, KMS}
 
   defdelegate digest(plaintext), to: Digest
   defdelegate digest(plaintext, opts), to: Digest
@@ -31,30 +31,14 @@ defmodule PhxBackendBoilerplate.Crypto do
   defdelegate open(message, opts), to: Envelope
 
   @doc false
-  def config(key, default \\ nil) do
-    Application.get_env(:phx_backend_boilerplate, __MODULE__, [])
-    |> Keyword.get(key, default)
-  end
+  defdelegate config(key, default \\ nil), to: Config
 
   @doc false
-  def key_id(opts) when is_list(opts) do
-    case Keyword.get(opts, :key_id) || config(:key_id) do
-      id when is_binary(id) and id != "" -> {:ok, id}
-      _ -> {:error, :key_id_missing}
-    end
-  end
+  defdelegate key_id(opts), to: Config
 
   @doc false
-  def context(opts) when is_list(opts) do
-    case Keyword.get(opts, :context, %{}) do
-      ctx when is_map(ctx) -> ctx
-      _ -> %{}
-    end
-  end
+  defdelegate context(opts), to: Config
 
   @doc false
-  def kms_client do
-    module = config(:kms, PhxBackendBoilerplate.Crypto.KMS.ExAws)
-    module.new()
-  end
+  defdelegate kms_client(), to: Config
 end

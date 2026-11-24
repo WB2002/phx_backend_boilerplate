@@ -4,7 +4,6 @@ defmodule PhxBackendBoilerplate.Accounts.User do
   use Ecto.Schema
   import Ecto.Changeset
 
-  alias PhxBackendBoilerplate.Accounts.Session
   alias PhxBackendBoilerplate.Crypto.Digest
 
   @primary_key {:id, :binary_id, autogenerate: true}
@@ -24,8 +23,6 @@ defmodule PhxBackendBoilerplate.Accounts.User do
     field :password, :string, virtual: true, redact: true
     field :password_digest, :string, redact: true
     field :stripe_customer_id, :string
-
-    has_many :sessions, Session
 
     timestamps(type: :utc_datetime)
   end

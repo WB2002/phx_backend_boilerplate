@@ -38,10 +38,15 @@ phx_backend_boilerplate-*.tar
 npm-debug.log
 /assets/node_modules/
 
-# Local env files (keep .env.example tracked).
+# Local env files (keep .env.example and .env.conformance.example tracked).
 .env
 .env.*
 !.env.example
+!.env.conformance.example
+
+# Conformance audit outputs and temporary runner checkout.
+/reports/
+/.conformance-runner/
 
 # Dialyzer PLT cache (rebuilt locally and in CI).
 /priv/plts/

@@ -9,7 +9,7 @@ defmodule PhxBackendBoilerplate.Crypto.Envelope do
   alias AwsEncryptionSdk.Client
   alias AwsEncryptionSdk.Cmm.Default
   alias AwsEncryptionSdk.Keyring.AwsKms
-  alias PhxBackendBoilerplate.Crypto
+  alias PhxBackendBoilerplate.Crypto.Config
 
   @type opts :: [
           key_id: String.t(),
@@ -25,7 +25,7 @@ defmodule PhxBackendBoilerplate.Crypto.Envelope do
   @spec seal(binary(), opts()) :: {:ok, binary()} | {:error, term()}
   def seal(plaintext, opts \\ []) when is_binary(plaintext) do
     with {:ok, client} <- sdk_client(opts) do
-      context = Crypto.context(opts)
+      context = Config.context(opts)
 
       case Client.encrypt(client, plaintext, encryption_context: context) do
         {:ok, %{ciphertext: ciphertext}} -> {:ok, ciphertext}
@@ -67,8 +67,8 @@ defmodule PhxBackendBoilerplate.Crypto.Envelope do
   end
 
   defp sdk_client(opts) do
-    with {:ok, key_id} <- Crypto.key_id(opts),
-         {:ok, kms_client} <- Crypto.kms_client(),
+    with {:ok, key_id} <- Config.key_id(opts),
+         {:ok, kms_client} <- Config.kms_client(),
          {:ok, keyring} <- AwsKms.new(key_id, kms_client) do
       {:ok, Client.new(Default.new(keyring))}
     end

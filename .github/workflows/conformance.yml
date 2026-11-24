@@ -1,0 +1,135 @@
+name: Polyglot Conformance Audit
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - master
+  schedule:
+    - cron: '0 3 * * *'
+  workflow_dispatch:
+
+jobs:
+  conformance:
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: phx_backend_boilerplate_conformance
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Free runner disk space
+        run: ./scripts/ci/free-disk-space.sh
+
+      - name: Checkout conformance runner
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          repository: ${{ vars.CONFORMANCE_REPO || format('{0}/backend_security_and_conformance_tests', github.repository_owner) }}
+          token: ${{ secrets.CONFORMANCE_REPO_TOKEN || github.token }}
+          path: .conformance-runner
+
+      - name: Setup Go
+        uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
+        with:
+          go-version: '1.23'
+
+      - name: Build conformance-audit
+        run: |
+          cd .conformance-runner && go build -o "${RUNNER_TEMP}/conformance-audit" ./cmd/conformance-audit
+          go clean -cache -modcache
+          cd "${GITHUB_WORKSPACE}" && rm -rf .conformance-runner
+          echo "CONFORMANCE_AUDIT_BIN=${RUNNER_TEMP}/conformance-audit" >> "${GITHUB_ENV}"
+
+      - name: Setup Elixir & OTP
+        uses: erlef/setup-beam@54075bcc5e249e4758d363f27d099f55d843f124 # v1.24.1
+        with:
+          otp-version: "27"
+          elixir-version: "1.20"
+
+      - name: Restore Mix cache
+        uses: actions/cache@d4323d4df104b026a6aa633fdb11d772146be0bf # v4.2.2
+        with:
+          path: |
+            deps
+            _build/prod
+          key: ${{ runner.os }}-mix-prod-${{ hashFiles('**/mix.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-mix-prod-
+
+      - name: Build Phoenix production release
+        env:
+          MIX_ENV: prod
+        run: |
+          mix deps.get --only prod
+          mix compile
+          mix assets.deploy
+          mix release --overwrite
+          rm -rf "${RUNNER_TEMP}/phx-release" "${RUNNER_TEMP}/mix-stash"
+          cp -a _build/prod/rel/phx_backend_boilerplate "${RUNNER_TEMP}/phx-release"
+          mkdir -p "${RUNNER_TEMP}/mix-stash"
+          mv deps _build "${RUNNER_TEMP}/mix-stash/"
+          echo "CONFORMANCE_RELEASE_DIR=${RUNNER_TEMP}/phx-release" >> "${GITHUB_ENV}"
+
+      - name: Run PR/Push Conformance Gate
+        if: github.event_name != 'schedule'
+        env:
+          SKIP_APP_BUILD: 'true'
+        run: ./scripts/ci/run-conformance-audit.sh --stages sast,graph,pentest,load --profile baseline --output reports
+
+      - name: Run Nightly Full Soak & DAST Audit
+        if: github.event_name == 'schedule'
+        env:
+          SKIP_APP_BUILD: 'true'
+        run: ./scripts/ci/run-conformance-audit.sh --stages all --profile soak --output reports
+
+      - name: Restore Mix build directories for cache
+        if: always()
+        run: |
+          if [[ -d "${RUNNER_TEMP}/mix-stash/deps" ]]; then
+            mv "${RUNNER_TEMP}/mix-stash/deps" .
+          fi
+          if [[ -d "${RUNNER_TEMP}/mix-stash/_build" ]]; then
+            mv "${RUNNER_TEMP}/mix-stash/_build" .
+          fi
+
+      - name: Upload SARIF to GitHub Security
+        # SARIF upload needs Settings -> Security -> Code scanning enabled on the repo.
+        if: always() && vars.CODEQL_UPLOAD == 'true' && hashFiles('reports/phx-backend-boilerplate/results.sarif') != ''
+        uses: github/codeql-action/upload-sarif@4c50b6f6fd9dc6fe03111c2d045c8be2a724cce1 # v3.28.11
+        with:
+          sarif_file: reports/phx-backend-boilerplate/results.sarif
+
+      - name: Upload 4-part Conformance Bundle
+        if: always()
+        uses: actions/upload-artifact@4cec3d8aa04e39d1a68397de0c4cd6fb9dce8ec1 # v4.6.1
+        with:
+          name: conformance-report
+          path: reports/phx-backend-boilerplate/

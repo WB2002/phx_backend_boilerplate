@@ -5,7 +5,7 @@ defmodule PhxBackendBoilerplate.Crypto.KMS do
   Prefer `PhxBackendBoilerplate.Crypto.Envelope` for larger payloads.
   """
 
-  alias PhxBackendBoilerplate.Crypto
+  alias PhxBackendBoilerplate.Crypto.Config
 
   @max_plaintext_bytes 4096
 
@@ -19,9 +19,9 @@ defmodule PhxBackendBoilerplate.Crypto.KMS do
   @spec encrypt(binary(), opts()) :: {:ok, binary()} | {:error, term()}
   def encrypt(plaintext, opts \\ []) when is_binary(plaintext) do
     with :ok <- check_size(plaintext),
-         {:ok, key_id} <- Crypto.key_id(opts),
-         {:ok, client} <- Crypto.kms_client() do
-      context = Crypto.context(opts)
+         {:ok, key_id} <- Config.key_id(opts),
+         {:ok, client} <- Config.kms_client() do
+      context = Config.context(opts)
       module = client.__struct__
 
       case module.encrypt(client, key_id, plaintext, context, []) do
@@ -38,9 +38,9 @@ defmodule PhxBackendBoilerplate.Crypto.KMS do
   """
   @spec decrypt(binary(), opts()) :: {:ok, binary()} | {:error, term()}
   def decrypt(ciphertext, opts \\ []) when is_binary(ciphertext) do
-    with {:ok, key_id} <- Crypto.key_id(opts),
-         {:ok, client} <- Crypto.kms_client() do
-      context = Crypto.context(opts)
+    with {:ok, key_id} <- Config.key_id(opts),
+         {:ok, client} <- Config.kms_client() do
+      context = Config.context(opts)
       module = client.__struct__
 
       case module.decrypt(client, key_id, ciphertext, context, []) do

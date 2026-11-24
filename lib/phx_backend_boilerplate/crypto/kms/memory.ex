@@ -32,7 +32,7 @@ defmodule PhxBackendBoilerplate.Crypto.KMS.Memory do
   def new(opts \\ []) do
     key =
       Keyword.get(opts, :wrapping_key) ||
-        PhxBackendBoilerplate.Crypto.config(:wrapping_key)
+        PhxBackendBoilerplate.Crypto.Config.config(:wrapping_key)
 
     if is_binary(key) and byte_size(key) == 32 do
       {:ok, %__MODULE__{wrapping_key: key}}

@@ -25,7 +25,8 @@ defmodule PhxBackendBoilerplateWeb.AuthController do
     end
   end
 
-  def login(conn, %{"email" => email, "password" => password}) do
+  def login(conn, %{"email" => email, "password" => password})
+      when is_binary(email) and is_binary(password) do
     case Accounts.login(email, password) do
       {:ok, auth} ->
         conn
