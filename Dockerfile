@@ -84,6 +84,9 @@ USER 10001:10001
 
 EXPOSE 4000
 
+HEALTHCHECK --interval=30s --timeout=3s --start-period=15s --retries=3 \
+  CMD ["/app/bin/healthcheck"]
+
 STOPSIGNAL SIGTERM
 
 ENTRYPOINT ["/app/bin/server"]
