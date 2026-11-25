@@ -1,0 +1,60 @@
+rules:
+  - id: elixir.obfuscated-exfil.shell-cmd
+    message: Avoid invoking a shell via :os.cmd, System.shell, or System.cmd("sh"|"bash", ["-c", ...]); common in command injection and obfuscated exfiltration.
+    severity: ERROR
+    languages: [generic]
+    pattern-either:
+      - pattern: :os.cmd(...)
+      - pattern: System.shell(...)
+      - pattern: System.cmd("sh", ["-c", ...])
+      - pattern: System.cmd("bash", ["-c", ...])
+      - pattern: System.cmd("/bin/sh", ["-c", ...])
+      - pattern: System.cmd("/bin/bash", ["-c", ...])
+    paths:
+      include:
+        - "*.ex"
+        - "*.exs"
+
+  - id: elixir.obfuscated-exfil.base64-to-exec
+    message: Base64 decode chained to command or code execution (obfuscation pattern).
+    severity: ERROR
+    languages: [generic]
+    pattern-either:
+      - pattern: |
+          $DECODED = Base.decode64!(...)
+          ...
+          System.cmd(..., [$DECODED])
+      - pattern: |
+          $DECODED = Base.decode64!(...)
+          ...
+          System.cmd(..., [..., $DECODED])
+      - pattern: |
+          $DECODED = Base.decode64!(...)
+          ...
+          Code.eval_string($DECODED)
+    paths:
+      include:
+        - "*.ex"
+        - "*.exs"
+
+  - id: elixir.obfuscated-exfil.env-exfil-http
+    message: Sending full System.get_env() map over HTTP (possible credential exfiltration).
+    severity: ERROR
+    languages: [generic]
+    pattern-either:
+      - pattern: |
+          $ENV = System.get_env()
+          ...
+          Req.post(...)
+      - pattern: |
+          $ENV = System.get_env()
+          ...
+          Req.post!(...)
+      - pattern: |
+          $ENV = System.get_env()
+          ...
+          :httpc.request(...)
+    paths:
+      include:
+        - "*.ex"
+        - "*.exs"

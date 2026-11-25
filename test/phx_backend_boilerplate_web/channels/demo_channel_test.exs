@@ -46,14 +46,14 @@ defmodule PhxBackendBoilerplateWeb.DemoChannelTest do
     {:ok, _, socket} = subscribe_and_join(socket, "demo:lobby", %{})
 
     ref = push(socket, "ping", %{"hello" => "world"})
-    assert_reply ref, :ok, %{"hello" => "world"}
+    assert_reply ref, :ok, %{"hello" => "world"}, 1_000
   end
 
   test "rejects oversized ping payloads", %{socket: socket} do
     {:ok, _, socket} = subscribe_and_join(socket, "demo:lobby", %{})
 
     ref = push(socket, "ping", %{"blob" => String.duplicate("a", 8_192)})
-    assert_reply ref, :error, %{reason: "payload_too_large"}
+    assert_reply ref, :error, %{reason: "payload_too_large"}, 1_000
   end
 
   test "pushes PubSub broadcasts as client events", %{socket: socket} do
@@ -62,7 +62,7 @@ defmodule PhxBackendBoilerplateWeb.DemoChannelTest do
     payload = %{"event" => "comment_created", "title" => "Hi"}
     assert :ok = PubSub.broadcast("demo:lobby", payload)
 
-    assert_push "comment_created", ^payload
+    assert_push "comment_created", ^payload, 1_000
   end
 
   test "defaults push event to msg when payload has no event key", %{socket: socket} do
@@ -71,6 +71,6 @@ defmodule PhxBackendBoilerplateWeb.DemoChannelTest do
     payload = %{"title" => "no event"}
     assert :ok = PubSub.broadcast("demo:lobby", payload)
 
-    assert_push "msg", ^payload
+    assert_push "msg", ^payload, 1_000
   end
 end

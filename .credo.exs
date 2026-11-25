@@ -28,7 +28,13 @@
           "priv/*/seeds.exs",
           "mix.exs"
         ],
-        excluded: [~r"/_build/", ~r"/deps/", ~r"/node_modules/", ~r"/test/fixtures/"]
+        excluded: [
+          ~r"/_build/",
+          ~r"/deps/",
+          ~r"/node_modules/",
+          ~r"/test/fixtures/",
+          ~r"/test/security/semgrep-fixtures/"
+        ]
       },
       #
       # Load and configure plugins here:

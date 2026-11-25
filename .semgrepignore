@@ -23,3 +23,7 @@ erl_crash.dump
 # Version control and AI runtime state
 .git/
 .superpowers/
+
+# Intentional Semgrep rule test fixtures
+test/security/semgrep-fixtures/
+semgrep/rules/*.ex
