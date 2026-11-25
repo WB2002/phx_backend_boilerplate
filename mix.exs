@@ -48,8 +48,8 @@ defmodule PhxBackendBoilerplate.MixProject do
   # Type `mix help deps` for examples and options.
   defp deps do
     [
-      {:phoenix, "~> 1.8.13 and <= 1.8.15"},
-      {:phoenix_pubsub, "~> 2.3.0"},
+      {:phoenix, "~> 1.8.17"},
+      {:phoenix_pubsub, "~> 2.4"},
       {:phoenix_ecto, "~> 4.5"},
       {:ecto_sql, "~> 3.13"},
       {:postgrex, ">= 0.0.0"},
@@ -77,9 +77,9 @@ defmodule PhxBackendBoilerplate.MixProject do
       {:telemetry_metrics, "~> 1.0"},
       {:telemetry_poller, "~> 1.0"},
       {:telemetry_metrics_cloudwatch, "~> 1.1"},
-      {:ex_aws, "~> 2.7"},
-      {:ex_aws_s3, "~> 2.5"},
-      {:ex_aws_kms, "~> 2.5"},
+      {:ex_aws, "~> 2.8"},
+      {:ex_aws_s3, "~> 2.6"},
+      {:ex_aws_kms, "~> 2.7"},
       {:ex_aws_cloudwatch, "~> 2.0"},
       {:ex_aws_cloudwatch_logs, "~> 1.0"},
       {:aws_encryption_sdk, "~> 1.2"},
