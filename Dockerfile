@@ -53,7 +53,7 @@ FROM debian:trixie-slim@sha256:a72b4433de1cf7d6bae0c4cee74d0547f58601a643b3375f0
 # hadolint ignore=DL3005,DL3008
 RUN apt-get update -y && \
     apt-get upgrade -y --no-install-recommends && \
-    apt-get install -y --no-install-recommends libstdc++6 openssl libncurses6 ca-certificates && \
+    apt-get install -y --no-install-recommends libstdc++6 openssl libncurses6 libzstd1 ca-certificates && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 

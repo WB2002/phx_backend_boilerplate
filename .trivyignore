@@ -166,3 +166,13 @@ CVE-2026-16742
 # Tracking: Pending Debian 13 (trixie) openssl security update
 # Review-By: 2027-03-31
 CVE-2026-107494
+
+# CVE: CVE-2026-124851
+# Library: libzstd1 (1.5.7+dfsg-1)
+# Severity: HIGH
+# Title: zstd: Zstandard Information Disclosure via Uninitialized buffer
+# Status: Triaged / Accepted Risk until base image includes 1.5.7+dfsg-1+deb13u1
+# Rationale: Dockerfile upgrades/installs libzstd1; allow CI until security mirrors sync.
+# Tracking: Remove after debian:trixie-slim includes libzstd1 deb13u1 in Trivy DB
+# Review-By: 2027-03-31
+CVE-2026-124851

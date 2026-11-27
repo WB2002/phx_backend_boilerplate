@@ -21,8 +21,9 @@ defmodule PhxBackendBoilerplateWeb.OpenAPIControllerTest do
       assert body["openapi"] == "3.0.3"
       assert is_map(body["info"])
       assert is_map(body["paths"]["/health"])
-      assert is_map(body["paths"]["/api/auth/login"])
-      assert is_map(body["paths"]["/api/auth/me"])
+      assert is_map(body["paths"]["/auth/login"])
+      assert is_map(body["paths"]["/auth/me"])
+      assert is_map(body["paths"]["/openapi.json"])
       assert is_map(body["components"]["securitySchemes"]["bearerAuth"])
     end
 
