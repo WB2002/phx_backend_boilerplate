@@ -52,6 +52,21 @@ redis_url =
 
 config :phx_backend_boilerplate, PhxBackendBoilerplate.RateLimit, url: redis_url
 
+case System.get_env("AUTH_RATE_LIMIT") do
+  raw when is_binary(raw) and raw != "" ->
+    case Integer.parse(raw) do
+      {limit, ""} when limit > 0 ->
+        config :phx_backend_boilerplate, PhxBackendBoilerplateWeb.Plugs.RateLimit,
+          limits: %{"auth" => limit}
+
+      _ ->
+        :ok
+    end
+
+  _ ->
+    :ok
+end
+
 # Nebulex L2 (Redis). Same REDIS_URL as Hammer; Hammer uses its own key prefix.
 config :phx_backend_boilerplate, PhxBackendBoilerplate.Cache.L2, conn_opts: [url: redis_url]
 

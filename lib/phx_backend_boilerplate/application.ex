@@ -52,6 +52,7 @@ defmodule PhxBackendBoilerplate.Application do
           {PhxBackendBoilerplate.Cache, []},
           PhxBackendBoilerplate.Cache.Coalescer,
           {Task.Supervisor, name: PhxBackendBoilerplate.Cache.TaskSupervisor},
+          {Task.Supervisor, name: PhxBackendBoilerplateWeb.SocketLimits.TaskSupervisor},
           PhxBackendBoilerplate.Integrations.Example,
           PhxBackendBoilerplate.Integrations.Slack.WebAPI,
           PhxBackendBoilerplate.Integrations.Stripe.Api,

@@ -22,7 +22,6 @@ ENV MIX_ENV=prod
 # Install mix dependencies
 COPY mix.exs mix.lock ./
 RUN --mount=type=cache,target=/root/.hex \
-    --mount=type=cache,target=/root/.mix \
     mix deps.get --only prod
 
 # Copy compile-time configs
@@ -30,7 +29,6 @@ COPY config/config.exs config/prod.exs config/redaction_keys.exs config/
 
 # Compile dependencies
 RUN --mount=type=cache,target=/root/.hex \
-    --mount=type=cache,target=/root/.mix \
     mix deps.compile
 
 # Copy application assets and source code

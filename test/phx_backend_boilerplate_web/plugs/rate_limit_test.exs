@@ -191,6 +191,30 @@ defmodule PhxBackendBoilerplateWeb.Plugs.RateLimitTest do
     refute conn.halted
   end
 
+  test "respects runtime :limits override for a bucket id" do
+    id = "plug_override_#{:erlang.unique_integer([:positive])}"
+    opts = RateLimit.init(id: id, scale: :timer.minutes(1), limit: 1)
+    ip = unique_ip()
+
+    previous = Application.get_env(:phx_backend_boilerplate, RateLimit, [])
+
+    Application.put_env(
+      :phx_backend_boilerplate,
+      RateLimit,
+      Keyword.put(previous, :limits, %{id => 3})
+    )
+
+    on_exit(fn -> Application.put_env(:phx_backend_boilerplate, RateLimit, previous) end)
+
+    refute call_with_ip(ip, opts).halted
+    refute call_with_ip(ip, opts).halted
+    refute call_with_ip(ip, opts).halted
+
+    denied = call_with_ip(ip, opts)
+    assert denied.halted
+    assert denied.status == 429
+  end
+
   defp call_with_ip(ip, opts) do
     build_conn()
     |> Map.put(:remote_ip, ip)

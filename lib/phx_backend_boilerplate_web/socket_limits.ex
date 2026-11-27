@@ -106,7 +106,7 @@ defmodule PhxBackendBoilerplateWeb.SocketLimits do
     count = :ets.update_counter(@channel_counts_table, pid, {2, 1}, {pid, 0})
 
     if count == 1 do
-      spawn_monitor_cleanup(pid)
+      start_monitor_cleanup(pid)
     end
 
     if count > max_channels_per_socket() do
@@ -155,8 +155,8 @@ defmodule PhxBackendBoilerplateWeb.SocketLimits do
     end
   end
 
-  defp spawn_monitor_cleanup(pid) do
-    spawn(fn ->
+  defp start_monitor_cleanup(pid) do
+    Task.Supervisor.start_child(__MODULE__.TaskSupervisor, fn ->
       ref = Process.monitor(pid)
 
       receive do

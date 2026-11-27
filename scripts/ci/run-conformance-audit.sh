@@ -133,6 +133,7 @@ export RECAPTCHA_SECRET_KEY="${RECAPTCHA_SECRET_KEY:-conformance-recaptcha-place
 export CLOUDWATCH_LOGS_ENABLED=false
 export CLOUDWATCH_METRICS_ENABLED=false
 export OTEL_TRACES_ENABLED=false
+export AUTH_RATE_LIMIT="${AUTH_RATE_LIMIT:-1000}"
 export CORS_ORIGINS="${CORS_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000}"
 
 gen_secret() {
