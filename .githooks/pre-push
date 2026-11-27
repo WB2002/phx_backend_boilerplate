@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+export PATH="$HOME/.asdf/shims:$HOME/.mise/shims:$HOME/.local/bin:/usr/local/bin:$PATH"
+
+ROOT_DIR="$(git rev-parse --show-toplevel)"
+cd "${ROOT_DIR}"
+
+mix format --check-formatted
+mix credo --min-priority high
+MIX_ENV=test mix compile --warnings-as-errors

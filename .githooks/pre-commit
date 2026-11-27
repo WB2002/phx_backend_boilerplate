@@ -1,14 +1,15 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT="$(git rev-parse --show-toplevel)"
-cd "$ROOT"
+export PATH="$HOME/.asdf/shims:$HOME/.mise/shims:$HOME/.local/bin:/usr/local/bin:$PATH"
 
-if ! command -v gitleaks >/dev/null 2>&1; then
-  echo "error: gitleaks is not installed or not on PATH." >&2
-  echo "Install with: brew install gitleaks" >&2
-  echo "Then re-run your commit." >&2
-  exit 1
+ROOT_DIR="$(git rev-parse --show-toplevel)"
+cd "${ROOT_DIR}"
+
+STAGED_EX_FILES="$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.(ex|exs)$' || true)"
+if [[ -n "${STAGED_EX_FILES}" ]]; then
+  printf '%s\n' "${STAGED_EX_FILES}" | xargs mix format --check-formatted
+  printf '%s\n' "${STAGED_EX_FILES}" | xargs mix credo --min-priority high
 fi
 
-exec gitleaks protect --staged --redact --no-banner --config .gitleaks.toml
+./scripts/gitleaks-pre-commit.sh
