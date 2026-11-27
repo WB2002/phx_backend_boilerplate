@@ -120,6 +120,7 @@ fi
 
 export MIX_ENV="${MIX_ENV:-prod}"
 export PHX_SERVER=true
+export ENABLE_OPENAPI="${ENABLE_OPENAPI:-true}"
 export PHX_HOST="${PHX_HOST:-127.0.0.1}"
 export PORT="${USER_PORT:-${PORT:-4000}}"
 export DATABASE_URL="${USER_DATABASE_URL:-${DATABASE_URL:-ecto://postgres:postgres@127.0.0.1:5432/phx_backend_boilerplate_conformance}}"

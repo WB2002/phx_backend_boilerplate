@@ -1,6 +1,7 @@
 {
   "name": "phx-backend-boilerplate",
   "language": "elixir",
+  "openapiUrl": "/openapi.json",
   "capabilities": {
     "health": {
       "method": "GET",

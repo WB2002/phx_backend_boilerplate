@@ -89,6 +89,14 @@ truthy? = fn
   _ -> false
 end
 
+openapi_enabled? =
+  case System.get_env("ENABLE_OPENAPI") do
+    nil -> config_env() != :prod
+    value -> truthy?.(value)
+  end
+
+config :phx_backend_boilerplate, :openapi, enabled: openapi_enabled?
+
 recaptcha_skip? =
   case config_env() do
     :prod ->

@@ -16,7 +16,7 @@ config :phx_backend_boilerplate, PhxBackendBoilerplateWeb.Endpoint,
     rewrite_on: [:x_forwarded_proto],
     exclude: [
       hosts: ["localhost", "127.0.0.1"],
-      paths: ["/health", "/ready"]
+      paths: ["/health", "/ready", "/openapi.json"]
     ]
   ]
 

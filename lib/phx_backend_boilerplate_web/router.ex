@@ -191,6 +191,7 @@ defmodule PhxBackendBoilerplateWeb.Router do
 
     get "/health", HealthController, :health
     get "/ready", HealthController, :ready
+    get "/openapi.json", OpenAPIController, :show
   end
 
   scope "/api", PhxBackendBoilerplateWeb do
