@@ -97,6 +97,7 @@ Add a line under **Things the agent gets wrong** in `AGENTS.md`. A repeated less
 
 ## More slash commands
 
+- `/idea-to-blueprint` — walk a high-level product idea down a 7-level zoom ladder (vision, core loop, journey, screens/states, rules/data, hit details, build plan) via recommended options into a buildable Product Blueprint.
 - `/project-brief` — interview, then write the product brief, NFRs, an architecture stub, and a proposed stack ADR.
 - `/record-decision` — write the next ADR and index it.
 - `/doc-sync` — update docs from the diff and the plan's Docs impact.
